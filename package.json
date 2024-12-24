@@ -1,0 +1,15 @@
+{
+  "name": "eventer",
+  "version": "2.1.2",
+  "description": "Libreria para gestionar eventos en las apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Camilo Barbosa",
+  "license": "MIT",
+  "dependencies": {
+    "eventer": "file:",
+    "typescript": "^5.7.2"
+  }
+}
