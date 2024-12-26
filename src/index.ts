@@ -1,4 +1,4 @@
-// v: 2.1.2
+// v: 3.0.2
 // Ftd: (Feactures to dev)
 
 
@@ -19,6 +19,8 @@ export type ListenerController<Props extends any[], Returns = Promise<void> | vo
      * Estado del escuchador
      */
     state: Readonly<"idle" | "removed" | "running" | "willRemove" | "desattached" | "willAttach">
+
+    onRemoveEvent(callback: () => void): void
 }
 
 export type EventBrocastController<Props extends any[], Returns, Name = string> = {
@@ -259,6 +261,7 @@ class ShareEventListener<Props extends any[] = any[], Returns = any> implements 
     private doOneTime = false;
     private removed = false;
     private isrunning = false;
+    private _onRemoveEvent = () => { };
     public get willRemove() {
         return this._willRemove;
     }
@@ -315,8 +318,13 @@ class ShareEventListener<Props extends any[] = any[], Returns = any> implements 
         const next = this.event.events[this.name].shift();
         if (next) {
             next.removed = true;
+            this._onRemoveEvent();
             next.removeEvent();
         }
+    }
+
+    onRemoveEvent(callback: () => void): void {
+        this._onRemoveEvent = callback;
     }
 
     get state(): "idle" | "removed" | "running" | "willRemove" | "desattached" {
@@ -341,6 +349,9 @@ class ShareEventListener<Props extends any[] = any[], Returns = any> implements 
             },
             get state() {
                 return _self.state;
+            },
+            onRemoveEvent(callback) {
+                _self.onRemoveEvent(callback);
             },
         }
     }
@@ -416,6 +427,10 @@ export default class GroupEvent {
                 if (_listener == undefined)
                     return "desattached";
                 return _listener.state;
+            },
+            onRemoveEvent(callback) {
+                if(_listener)
+                    _listener.onRemoveEvent(callback);
             },
         }
     }
@@ -809,6 +824,10 @@ export default class GroupEvent {
                             if (_listener == undefined)
                                 return "desattached";
                             return _listener.state;
+                        },
+                        onRemoveEvent(callback) {
+                            if(_listener)
+                                _listener.onRemoveEvent(callback);
                         },
                     };
                 }

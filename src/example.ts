@@ -120,13 +120,18 @@ try {
     myListener1.on(() => {
 
     })
+
 } catch {
     console.log(myListener1.state) // "desattached"
+
     myListener1 = myEvent2.createListener();
+
     console.log(myListener1.state) // "willAttach"
-    myListener1.on(() => {
+
+    myListener1.on(() => {        
         console.log(myListener1.state) // "running"
     })
+
     console.log(myListener1.state) // "idle"
 }
 
