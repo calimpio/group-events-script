@@ -1,4 +1,4 @@
-// v: 3.0.3
+// v: 3.0.4
 // Ftd: (Feactures to dev)
 
 
@@ -979,7 +979,7 @@ export default class GroupEvent {
         let _isStopped = true;
         let _isPaused = false;
         const _percent = this.createObservavble("percent_" + name)(0.0);
-        const _timer = this.createObservavble("timer_" + name)<number | undefined>(undefined);
+        const _timer = this.createObservavble("timer_" + name)<any | undefined>(undefined);
         const _completed = this.createEvent("completed_" + name)<T>();
         const _stopped = this.createEvent("stopped_" + name)();
         const _started = this.createEvent("started_" + name)();
