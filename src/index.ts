@@ -1,4 +1,4 @@
-// v: 3.0.4
+// v: 3.0.5
 // Ftd: (Feactures to dev)
 
 
@@ -239,6 +239,15 @@ export interface TimerController<CompleteParams extends any[] = any[], Name exte
         createOnStoppedListener(): ListenerController<[percent: number], void | Promise<void>, `On stoped timer ${Name}`>
         createOnCompletedListener(): ListenerController<CompleteParams, void | Promise<void>, `On completed timer ${Name}`>
     }
+}
+
+
+export interface EventObservableMapController<Model> {
+    mount(): EventObservableMapController<Model> | void
+    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): EventObservableController<any> | undefined
+    createSubscribe<Key extends keyof Model>(key: Key): SubscriberController<Model[Key] | ObservableMapper<Model[Key]>> | undefined
+    getModel(): Model | undefined
+    resetFrom(model: Model): EventObservableMapController<Model>
 }
 
 type EventMap = {
@@ -1075,5 +1084,70 @@ export default class GroupEvent {
         } else if (ob && typeof ob === 'object') {
             this.removeAllHandlers(Object.values(ob));
         }
+    }
+}
+
+
+
+
+
+export class ObservableMapper<Model> implements EventObservableMapController<Model> {
+
+    private events!: GroupEvent;
+    private props!: Record<PropertyKey, EventObservableController<any | ObservableMapper<any>>>
+    constructor(private model?: Model) {
+
+    }
+
+    mount() {
+        if (!this.props && this.model) {
+            return this.resetFrom(this.model);
+        }
+    }
+
+    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key) {
+        if (this.props) {
+            return this.props[key]
+        }
+        return undefined
+    }
+    createSubscribe<Key extends keyof Model>(key: Key) {
+        if (this.props) {
+            return this.props[key].createSubscriber()
+        }
+        return undefined
+    }
+
+    getModel() {
+        return this.model;
+    }
+
+    resetFrom(model: Model): EventObservableMapController<Model> {
+        if (!this.props) {
+            this.events = new GroupEvent;
+            this.props = {};
+            this.model = model;
+        }
+        if (typeof model == "object" && !Array.isArray(model) && model) {
+            const keys = Object.keys(model);
+            for (let vk of keys) {
+                const m: any = model;
+                const value = m[vk];
+                if (typeof value == "object" && !Array.isArray(value) && value) {
+                    const deep = new ObservableMapper<any>;
+                    deep.resetFrom(value);
+                    this.props[vk] = this.events.createObservavble(vk)(deep);
+                    this.props[vk].createSubscriber().subscribe(value => {
+                        (model as any)[vk] = value;
+                    })
+                } else {
+                    this.props[vk] = this.events.createObservavble(vk)<any>(value);
+                    this.props[vk].createSubscriber().subscribe(value => {
+                        (model as any)[vk] = value;
+                    })
+                }
+            }
+        }
+        return this;
     }
 }

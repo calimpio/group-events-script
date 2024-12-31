@@ -1,4 +1,4 @@
-import GroupEvent from ".";
+import GroupEvent, { ObservableMapper } from ".";
 //EventGroup instance
 
 const events = new GroupEvent;
@@ -128,7 +128,7 @@ try {
 
     console.log(myListener1.state) // "willAttach"
 
-    myListener1.on(() => {        
+    myListener1.on(() => {
         console.log(myListener1.state) // "running"
     })
 
@@ -136,4 +136,15 @@ try {
 }
 
 
+//Mapper
 
+const myMaper = new ObservableMapper<{ k1: string, k2: boolean }>;
+
+myMaper.resetFrom({ k1: "", k2: false });
+
+const k1ob = myMaper.get("k1");
+k1ob?.next("wow");
+
+k1ob?.createSubscriber().subscribe(()=>{
+    
+})
