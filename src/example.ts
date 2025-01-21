@@ -105,12 +105,12 @@ myEvent2.emit();
 
 myEvent2.removeEvent();
 
-console.log(myListener1.state) // "removed"
+console.log(myListener1.state) // "desattached"
 
 // solved: no throw error removed
 myListener1.on(() => {
     myListener1.remove();
-    console.log(myListener1.state) // "desattached"
+    console.log(myListener1.state) // "removed"
 })
 
 myEvent2.emit();
@@ -137,13 +137,26 @@ try {
 
 
 //Mapper
+type MyModel = { k1: string | null, k2: false, mk: { d: number } };
 
-const myMapper = new ObservableMapper<{ k1: string | null, k2: false, mk: { d: number } }>;
+const myMapper = new ObservableMapper<MyModel>;
 
 myMapper.resetFrom({ k1: "", k2: false, mk: { d: 0 } });
 
 const k1ob = myMapper.get("k1");
-k1ob?.next(null);
+k1ob.next(null);
 
-myMapper.getMap("mk")?.resetFrom({ d: 20 });
+myMapper.getMap("mk").resetFrom({ d: 20 });
 
+
+//updateFrom
+const emptyMapper = new ObservableMapper<MyModel>
+
+const k1sub = emptyMapper.createSubscribe("k1");
+const k2sub = emptyMapper.createSubscribe("k2");
+
+const mkMapper = emptyMapper.getMap("mk");
+const mkDsub = mkMapper.createSubscribe("d");
+
+
+myMapper.updateFrom({ k1: "", k2: false, mk: { d: 0 } });

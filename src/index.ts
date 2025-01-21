@@ -244,11 +244,11 @@ export interface TimerController<CompleteParams extends any[] = any[], Name exte
 
 export interface EventObservableMapController<Model> {
     mount(): EventObservableMapController<Model> | void
-    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue> | undefined
-    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> | undefined
+    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue>
+    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue>
     getModel(): Model | undefined
     resetFrom(model: Model): EventObservableMapController<Model>
-    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue> | undefined
+    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue>
 }
 
 type EventMap = {
@@ -306,7 +306,7 @@ class ShareEventListener<Props extends any[] = any[], Returns = any> implements 
     on(callback: (...props: Props) => Returns, doOneTime?: boolean): void {
         this.handler = callback;
         this.doOneTime = doOneTime || false;
-        if (this.removed || this.willRemove) {
+        if (this.removed) {
             throw new Error("it's setting a listener that was removed");
         }
     }
@@ -346,7 +346,7 @@ class ShareEventListener<Props extends any[] = any[], Returns = any> implements 
         this._onRemoveEvent = callback;
     }
 
-    get state(): "idle" | "removed" | "running" | "willRemove" | "desattached" {
+    get state() {
         if (this.removed)
             return "removed";
         if (this.willRemove)
@@ -1103,8 +1103,8 @@ type SubscriberMapControllerByKey<T, Tkey extends keyof T, TValue extends T[Tkey
 
 export class ObservableMapper<Model> implements EventObservableMapController<Model> {
 
-    private events!: GroupEvent;
-    private props!: Record<PropertyKey, ObsevavleMapTypeByKey<Model, keyof Model, any>>
+    private events = new GroupEvent;
+    private props: Record<PropertyKey, ObsevavleMapTypeByKey<Model, keyof Model, any>> = {}
     private internalEvents!: GroupEvent;
     private root!: EventObservableController<ObservableMapper<Model>, "root">
     private parent!: ObservableMapper<any>
@@ -1119,28 +1119,29 @@ export class ObservableMapper<Model> implements EventObservableMapController<Mod
         }
     }
 
-    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue> | undefined {
-        if (this.props) {
+    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue> {
+        if (this.props[key]) {
             return (this.props[key] as ObsevavleMapTypeByKey<Model, Key, TValue>)
         }
-        return undefined
+        let x = undefined as TValue;
+        this.props[key] = this.events.createObservavble(key.toString())<TValue>(x);
+        return this.props[key];
     }
 
-    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue> | undefined {
-        if (this.props) {
+    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue> {
+        if (this.props[key]) {
             const map = this.props[key].get();
             if (map instanceof ObservableMapper) {
                 return map;
             }
         }
-        return undefined
+        let deep = new ObservableMapper<TValue>
+        this.props[key] = this.events.createObservavble(key.toString())(deep);
+        return this.props[key].get() as ObservableMapper<TValue>;
     }
 
-    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> | undefined {
-        if (this.props) {
-            return ((this.props[key]).createSubscriber() as SubscriberMapControllerByKey<Model, Key, TValue>)
-        }
-        return undefined
+    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> {
+        return this.get(key).createSubscriber() as SubscriberMapControllerByKey<Model, Key, TValue>;
     }
 
     getModel() {
@@ -1148,16 +1149,13 @@ export class ObservableMapper<Model> implements EventObservableMapController<Mod
     }
 
     resetFrom(model: Model): EventObservableMapController<Model> {
-        if (!this.props) {
-            this.events = new GroupEvent;
-            this.props = {};
+        if (model) {           
             this.model = model;
             if (!this.parent) {
                 this.internalEvents = new GroupEvent;
                 this.root = this.internalEvents.createObservavble("root")<ObservableMapper<Model>>(this);
             }
         }
-
         //todo
         if (typeof model == "object" && !Array.isArray(model) && model) {
             const keys = Object.keys(model);
