@@ -40,7 +40,7 @@ const EmiterExample: FunctionComponent<EmiterExampleProps> = ({ changeTitle }) =
 
 const GroupEventExample: FunctionComponent = () => {
     const [events] = useState(new GroupEvent);
-    const [changeTitle] = useState(events.createEvent("changeTitle"))
+    const [changeTitle] = useState(events.createEvent("changeTitle")<[data: string]>())
 
     return <>
         <ListenerExample changeTitle={changeTitle} />

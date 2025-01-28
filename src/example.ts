@@ -152,11 +152,11 @@ myMapper.getMap("mk").resetFrom({ d: 20 });
 //updateFrom
 const emptyMapper = new ObservableMapper<MyModel>
 
-const k1sub = emptyMapper.createSubscribe("k1");
-const k2sub = emptyMapper.createSubscribe("k2");
+const k1sub = emptyMapper.createSubscriber("k1");
+const k2sub = emptyMapper.createSubscriber("k2");
 
 const mkMapper = emptyMapper.getMap("mk");
-const mkDsub = mkMapper.createSubscribe("d");
+const mkDsub = mkMapper.createSubscriber("d");
 
 
 myMapper.updateFrom({ k1: "", k2: false, mk: { d: 0 } });

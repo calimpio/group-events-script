@@ -251,7 +251,7 @@ export interface TimerController<CompleteParams extends any[] = any[], Name exte
 export interface EventObservableMapController<Model> {
     mount(): EventObservableMapController<Model> | void
     get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue>
-    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue>
+    createSubscriber<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue>
     getModel(): Model | undefined
     resetFrom(model: Model): EventObservableMapController<Model>
     getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue>
@@ -1155,7 +1155,7 @@ export class ObservableMapper<Model> implements EventObservableMapController<Mod
         return this.props[key].get() as ObservableMapper<TValue>;
     }
 
-    createSubscribe<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> {
+    createSubscriber<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> {
         return this.get(key).createSubscriber() as SubscriberMapControllerByKey<Model, Key, TValue>;
     }
 
