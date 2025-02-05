@@ -1,6 +1,6 @@
 {
   "name": "eventer",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Libreria para gestionar eventos en las apps",
   "main": "./src/index.ts",
   "scripts": {

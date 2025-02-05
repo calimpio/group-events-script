@@ -18,12 +18,14 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": true,
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "allowImportingTsExtensions": true
     },
     "include": [
         "src"
     ],
-    "references": [
-        
-    ]
+    "references": [],
+    "ts-node": {
+        "esm": true
+    }
 }
