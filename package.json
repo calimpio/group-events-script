@@ -11,12 +11,14 @@
   "license": "MIT",
   "dependencies": {
     "eventer": "file:",
-    "typescript": "^5.7.2"
+    "sha256": "^0.2.0",
+    "typescript": "^5.7.2",
+    "uuid": "^11.1.0",
+    "react": "^19.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.7",
-    "@types/react-dom": "^19.0.3",
-    "react": "^19.0.0",
+    "@types/react-dom": "^19.0.3",    
     "react-dom": "^19.0.0"
   }
 }

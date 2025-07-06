@@ -1,6 +1,17 @@
 // v: 3.0.5
 // Ftd: (Feactures to dev)
 
+import { v4 } from "uuid"
+
+/**
+ * Crear un grupo de eventos
+ * @returns 
+ */
+export function eventer() {
+    return new GroupEvent;
+}
+
+export type State<T> = [T, React.Dispatch<React.SetStateAction<T>>]
 
 export type ListenerController<Props extends any[], Returns = Promise<void> | void, Description = string> = {
     /**
@@ -104,6 +115,12 @@ export interface SubscriberController<T, Name = string> {
     get(): T
 
 
+    react(): SubscriberControllerReact<T, Name>
+
+
+}
+export interface SubscriberControllerReact<T, Name = string> {
+    updateEffect(state: State<boolean>): () => () => void
 }
 
 export type SubscriberReaderController<T, Name = string> = Omit<SubscriberController<T, Name>, "next">
@@ -114,12 +131,6 @@ export interface EventObservableReaderController<T, Name = string> {
 }
 
 export interface ValidatorController<Model, Name extends string = string> {
-    /**
-     * Añadir una propiedad a validar
-     * @param key 
-     * @param defaultValidationValue 
-     */
-    addProp(key: keyof Model, defaultValidationValue?: boolean): void
     /**
      * Modificar el modelo por completo
      * @param model 
@@ -135,7 +146,7 @@ export interface ValidatorController<Model, Name extends string = string> {
      * @param key 
      * @param onChange 
      */
-    getProps(key: keyof Model, onChange?: (value: any, valid: EventObservableController<boolean>) => void): FormProps
+    getProps(key: keyof Model, onChange?: (value: any) => void): FormProps
     /**
      * Obetener los escuchadores para las acciones
      */
@@ -171,6 +182,14 @@ export interface FormEventsController<Model, Description extends string = string
         * @param callback 
         */
         createOnChangeListener(): ListenerController<[key: keyof Model, value: any], void | Promise<void>, `On change props in ${Description}`>
+    }
+    getDisabled(): boolean
+    setDisabled(value: boolean): void
+    getFocused(): boolean
+    setFocused(value: boolean): void
+    subscribers(): {
+        createDisabledSubscriber(): SubscriberController<boolean>
+        createFocusedSubscriber(): SubscriberController<boolean>
     }
 }
 
@@ -221,6 +240,8 @@ export interface LoaderController<Props extends any[], T, Description extends st
 
 export interface TaskManager<TKey extends string | number = string, Name extends string = string> {
     addTask(key: TKey, fun: () => Promise<any>): TaskManager<TKey>
+    removeTask(key: TKey): TaskManager<TKey>
+    createTaskInstance(): Task<TKey>
     execTasks(): Promise<void>
     resetTasks(): void
     isExecuting(): boolean
@@ -230,8 +251,13 @@ export interface TaskManager<TKey extends string | number = string, Name extends
         createStartExecutionListener(): ListenerController<[], void | Promise<void>, `On start execution task of ${Name}`>
         createEndExecutionListener(): ListenerController<[], void | Promise<void>, `On end execution task of ${Name}`>
         createForEachAllTaskErrorListener(): ListenerController<[key: TKey, error: any], void | Promise<void>, `On for each all tasks execution of ${Name}`>
-        createOnTaskDoneListener(key: TKey): ListenerController<[data: any], void | Promise<void>, `On tasks ${TKey} execution of ${Name}`> | undefined
+        createOnTaskDoneListener(key: TKey): ListenerController<[data: any], void | Promise<void>, `On tasks ${TKey} execution of ${Name}`>
     }
+}
+
+export interface Task<TKey extends string | number = string, Name extends string = string> {
+    setTask(fun: () => Promise<any>): TaskManager<TKey>
+    remove(): void
 }
 
 export interface TimerController<CompleteParams extends any[] = any[], Name extends string = string> {
@@ -248,14 +274,6 @@ export interface TimerController<CompleteParams extends any[] = any[], Name exte
 }
 
 
-export interface EventObservableMapController<Model> {
-    mount(): EventObservableMapController<Model> | void
-    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue>
-    createSubscriber<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue>
-    getModel(): Model | undefined
-    resetFrom(model: Model): EventObservableMapController<Model>
-    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue>
-}
 
 type EventMap = {
     [x: string]: ShareEventListener[]
@@ -591,11 +609,12 @@ export default class GroupEvent {
                     return {
                         get,
                         createSubscriber() {
-                            const { subscribe, unsubscribe } = createSubscriber()
+                            const { subscribe, unsubscribe, react } = createSubscriber()
                             return {
                                 subscribe,
                                 get,
-                                unsubscribe
+                                unsubscribe,
+                                react
                             }
                         },
                     }
@@ -652,6 +671,21 @@ export default class GroupEvent {
                         get() {
                             return _value;
                         },
+                        react() {
+                            const self = this;
+                            return {
+                                updateEffect(_state) {
+                                    return () => {
+                                        self.subscribe((v) => {
+                                            Array.isArray(_state) && (_state[1](!_state[0]))
+                                        }, true);
+                                        return () => {
+                                            self.unsubscribe();
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 get() {
@@ -753,6 +787,23 @@ export default class GroupEvent {
 
         // do not call functions from listener controller instances before taskManager instance return.
         const taskManager: TaskManager<TKey, Name> = {
+            createTaskInstance() {
+                let _key: TKey | undefined = undefined;
+                // do not call functions from listener controller instances before return.
+                return {
+                    setTask(fun) {
+                        if (!_key) {
+                            _key = v4() as TKey;
+                        }
+                        return taskManager.addTask(_key as TKey, fun);
+                    },
+                    remove() {
+                        if (_key) {
+                            taskManager.removeTask(_key);
+                        }
+                    }
+                }
+            },
             addTask: (key, callback) => {
                 const events = new GroupEvent;
                 taskLoader[key] = events.createLoader(key, callback);
@@ -773,6 +824,11 @@ export default class GroupEvent {
                         await afterLoader.emit();
                     }
                 })
+                return taskManager;
+            },
+            removeTask(key) {
+                delete tasks[key];
+                delete taskLoader[key];
                 return taskManager;
             },
             execTasks: async () => {
@@ -884,6 +940,22 @@ export default class GroupEvent {
     }
 
 
+    createTriggerBuilder<CallbackProps extends any[], CallbackReturs, TriggerProps extends any[]>() {
+        type Callback = ((...props: CallbackProps) => CallbackReturs);
+        type Trigger = ((...props: TriggerProps) => void);
+        let _callback: Callback | undefined;
+
+        return {
+            setCallback(callback?: Callback) {
+                _callback = callback;
+            },
+
+            buildTrigger(build: (callback: Callback | undefined) => Trigger) {
+                return build(_callback)
+            }
+        }
+    }
+
 
     /**
      * Eventos para usar en validaciones de formularios.
@@ -899,32 +971,17 @@ export default class GroupEvent {
         const _setTaskManager = this.createEvent("setTaskManager." + name)<[taskManager: TaskManager | null]>();
         const _makeValidations = this.createBroadcast("dovalidation." + name)<[], [PropertyKey, boolean]>();
         const _onChange = this.createEvent("on-change." + name)<[key: keyof Model, value: any]>();
+        const _disabled = this.createObservavble("disabled" + name)<boolean>(false);
+        const _focused = this.createObservavble("focused" + name)<boolean>(false);
         let _model: Model | undefined;
 
-        const addProp = (key: keyof Model, defaultValidationValue?: boolean) => {
-            if (!_props[key]) {
-                _debuger(`validadion ${name} add prop: ${key.toString()}`);
-                _props[key] = this.createObservavble(key.toString() + ".validation")(defaultValidationValue || false);
-            }
-        }
         // do not call functions from listener controller instances before return.
         return {
-            addProp,
             setModel: (model) => {
-                Object.values(_props).forEach(d => {
-                    (d as EventObservableController<boolean>).unsubscribes();
-                })
-                _props = {};
                 _model = model;
-                Object.keys(model).forEach(dk => {
-                    addProp(dk as keyof Model);
-                })
             },
             setPartialModel(model) {
                 _model = _model ? Object.assign(_model, model) : model
-                Object.keys(model).forEach(dk => {
-                    addProp(dk as keyof Model);
-                })
             },
             getEvents() {
                 return {
@@ -932,20 +989,43 @@ export default class GroupEvent {
                         createOnChangeListener() {
                             return _onChange.createListener();
                         },
+                    }),
+                    getDisabled() {
+                        return _disabled.get();
+                    },
+                    setDisabled(value: boolean) {
+                        return _disabled.next(value);
+                    },
+                    getFocused() {
+                        return _focused.get();
+                    },
+                    setFocused(value) {
+                        return _focused.next(value);
+                    },
+                    subscribers: () => ({
+                        createDisabledSubscriber() {
+                            return _disabled.createSubscriber();
+                        },
+                        createFocusedSubscriber() {
+                            return _focused.createSubscriber();
+                        },
                     })
                 }
             },
             getProps(key, onChange) {
+                let _timeout: any | undefined;
                 return {
                     onChange(value) {
-                        if (_props[key]) {
-                            _debuger(`validadion ${name} onChange: ${key.toString()}`);
-                            _model && (_model[key] = value);
-                            const _propV = _props[key];
-                            if (_propV)
-                                onChange && onChange(value, _propV);
-                            _onChange.emit(key, value);
+                        _model && (_model[key] = value);
+                        if (typeof _timeout != undefined) {
+                            clearTimeout(_timeout);
+                            _timeout = undefined;
                         }
+                        _timeout = setTimeout(async () => {
+                            _debuger(`validadion ${name} onChange: ${key.toString()}`);
+                            onChange && onChange(value);
+                            await _onChange.emit(key, value);
+                        }, 100);
                     },
                 }
             },
@@ -1104,127 +1184,3 @@ export default class GroupEvent {
 }
 
 
-type ObsevavleMapTypeByKey<T, Tkey extends keyof T, TValue extends T[Tkey]> =
-    EventObservableController<TValue extends object ?
-        (TValue extends null ? TValue :
-            (TValue extends undefined ? EventObservableController<TValue, Tkey> : ObservableMapper<TValue>))
-        : TValue, Tkey>;
-
-type SubscriberMapControllerByKey<T, Tkey extends keyof T, TValue extends T[Tkey]> =
-    SubscriberController<TValue extends object ?
-        (TValue extends null ? TValue :
-            (TValue extends undefined ? EventObservableController<TValue, Tkey> : ObservableMapper<TValue>))
-        : TValue, Tkey>;
-
-export class ObservableMapper<Model> implements EventObservableMapController<Model> {
-
-    private events = new GroupEvent;
-    private props: Record<PropertyKey, ObsevavleMapTypeByKey<Model, keyof Model, any>> = {}
-    private internalEvents!: GroupEvent;
-    private root!: EventObservableController<ObservableMapper<Model>, "root">
-    private parent!: ObservableMapper<any>
-
-    constructor(private model?: Model) {
-
-    }
-
-    mount() {
-        if (!this.props && this.model) {
-            return this.resetFrom(this.model);
-        }
-    }
-
-    get<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObsevavleMapTypeByKey<Model, Key, TValue> {
-        if (this.props[key]) {
-            return (this.props[key] as ObsevavleMapTypeByKey<Model, Key, TValue>)
-        }
-        let x = undefined as TValue;
-        this.props[key] = this.events.createObservavble(key.toString())<TValue>(x);
-        return this.props[key];
-    }
-
-    getMap<Key extends keyof Model, TValue extends Model[Key]>(key: Key): ObservableMapper<TValue> {
-        if (this.props[key]) {
-            const map = this.props[key].get();
-            if (map instanceof ObservableMapper) {
-                return map;
-            }
-        }
-        let deep = new ObservableMapper<TValue>
-        this.props[key] = this.events.createObservavble(key.toString())(deep);
-        return this.props[key].get() as ObservableMapper<TValue>;
-    }
-
-    createSubscriber<Key extends keyof Model, TValue extends Model[Key]>(key: Key): SubscriberMapControllerByKey<Model, Key, TValue> {
-        return this.get(key).createSubscriber() as SubscriberMapControllerByKey<Model, Key, TValue>;
-    }
-
-    getModel() {
-        return this.model;
-    }
-
-    resetFrom(model: Model): EventObservableMapController<Model> {
-        if (model) {
-            this.model = model;
-            if (!this.parent) {
-                this.internalEvents = new GroupEvent;
-                this.root = this.internalEvents.createObservavble("root")<ObservableMapper<Model>>(this);
-            }
-        }
-        //todo
-        if (typeof model == "object" && !Array.isArray(model) && model) {
-            const keys = Object.keys(model);
-            for (let vk of keys) {
-                const m: any = model;
-                const value = m[vk];
-                if (typeof value == "object" && !Array.isArray(value) && value) {
-                    const deep = new ObservableMapper<any>;
-                    deep.parent = this;
-                    deep.resetFrom(value);
-                    this.props[vk] = this.events.createObservavble(vk)(deep);
-                    this.props[vk].createSubscriber().subscribe(value => {
-                        (model as any)[vk] = value;
-                    })
-                } else {
-                    this.props[vk] = this.events.createObservavble(vk)<any>(value);
-                    this.props[vk].createSubscriber().subscribe(value => {
-                        (model as any)[vk] = value;
-                    })
-                }
-            }
-        }
-        return this;
-    }
-
-    update(force?: boolean) {
-        if (this.props && typeof this.model == "object" && !Array.isArray(this.model) && this.model) {
-            const keys = Object.keys(this.model);
-            for (let vk of keys) {
-                const m: any = this.model;
-                const value = m[vk];
-                if (typeof value == "object" && !Array.isArray(value) && value) {
-                    this.getMap(vk as keyof Model)?.update(force);
-                } else {
-                    this.props[vk].next(value, force);
-                }
-            }
-        }
-    }
-
-
-    //todo mejorar esto, tiene que aactualizar el arbol.
-    updateFrom(model: Model, force?: boolean) {
-        if (this.props && typeof this.model == "object" && !Array.isArray(this.model) && model) {
-            const keys = Object.keys(model);
-            for (let vk of keys) {
-                const m: any = model;
-                const value = m[vk];
-                if (typeof value == "object" && !Array.isArray(value) && value) {
-                    this.getMap(vk as keyof Model)?.updateFrom(value, force);
-                } else {
-                    this.props[vk].next(value, force);
-                }
-            }
-        }
-    }
-}

@@ -1,4 +1,4 @@
-import GroupEvent, { ObservableMapper } from "..";
+import GroupEvent from "..";
 //EventGroup instance
 
 const events = new GroupEvent;
@@ -134,32 +134,6 @@ try {
 
     console.log(myListener1.state) // "idle"
 }
-
-
-//Mapper
-type MyModel = { k1: string | null, k2: false, mk: { d: number } };
-
-const myMapper = new ObservableMapper<MyModel>;
-
-myMapper.resetFrom({ k1: "", k2: false, mk: { d: 0 } });
-
-const k1ob = myMapper.get("k1");
-k1ob.next(null);
-
-myMapper.getMap("mk").resetFrom({ d: 20 });
-
-
-//updateFrom
-const emptyMapper = new ObservableMapper<MyModel>
-
-const k1sub = emptyMapper.createSubscriber("k1");
-const k2sub = emptyMapper.createSubscriber("k2");
-
-const mkMapper = emptyMapper.getMap("mk");
-const mkDsub = mkMapper.createSubscriber("d");
-
-
-myMapper.updateFrom({ k1: "", k2: false, mk: { d: 0 } });
 
 
 //loader
