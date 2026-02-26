@@ -11,7 +11,6 @@ export function eventer() {
     return new GroupEvent;
 }
 
-export type State<T> = [T, React.Dispatch<React.SetStateAction<T>>]
 
 export type ListenerController<Props extends any[], Returns = Promise<void> | void, Description = string> = {
     /**
@@ -29,11 +28,22 @@ export type ListenerController<Props extends any[], Returns = Promise<void> | vo
      */
     state: Readonly<"idle" | "removed" | "running" | "willRemove" | "desattached" | "willAttach">
 
+    /**
+     * Se ejecuta cuando el evento es eliminado
+     * @param callback 
+     */
     onRemoveEvent(callback: () => void): void
 }
 
 export type EventBrocastController<Props extends any[], Returns, Name = string> = {
+    /**
+     * Crear un escuchador para el broadcast
+     */
     createBroadcastListener(): ListenerController<Props, Promise<Returns> | Returns, Name>
+    /**
+     * Emitir el evento broadcast y esperar las respuestas de los escuchadores
+     * @param params 
+     */
     broadcastEmit: (...params: Props) => Promise<Returns[] | undefined>;
 }
 
@@ -87,7 +97,26 @@ export type EventObservableController<T, Name = string> = {
      */
     unsubscribes(): void
 
+    /**
+     * Obtener una versión de solo lectura del observable
+     */
     readOnly(): EventObservableReaderController<T, Name>
+
+    /**
+     * Alterna el valor de un observable boleano.
+     */
+    switch(): Promise<boolean>
+    /**
+     * Incrementa el valor del obsevable
+     * @param value 
+     */
+    increment(value?: number): Promise<number>
+
+    /**
+     * Decrementa el valor del obsevable
+     * @param value 
+     */
+    decrement(value?: number): Promise<number>
 }
 
 export interface SubscriberController<T, Name = string> {
@@ -114,19 +143,31 @@ export interface SubscriberController<T, Name = string> {
      */
     get(): T
 
-
+    /**
+     * Crear un controlador para react
+     */
     react(): SubscriberControllerReact<T, Name>
 
 
 }
 export interface SubscriberControllerReact<T, Name = string> {
-    updateEffect(state: State<boolean>): () => () => void
+    /**
+     * Actualizar el efecto de react
+     * @param state 
+     */
+    updateEffect(state: [boolean, (v: boolean) => void]): () => () => void
 }
 
 export type SubscriberReaderController<T, Name = string> = Omit<SubscriberController<T, Name>, "next">
 
 export interface EventObservableReaderController<T, Name = string> {
+    /**
+     * Obtener el valor actual
+     */
     get: EventObservableController<T, Name>["get"],
+    /**
+     * Crear un suscriptor de solo lectura
+     */
     createSubscriber(): SubscriberReaderController<T, Name>
 }
 
@@ -161,20 +202,44 @@ export interface ValidatorController<Model, Name extends string = string> {
      */
     doValidation(): Promise<boolean>
 
+    /**
+     * Unir otro validador a una clave específica
+     * @param key 
+     * @param validator 
+     */
+    join(key: string, validator: ValidatorController<any> | null): void
+
+    /**
+     * Habilitar o deshabilitar el modo debug
+     * @param value 
+     */
     setDebug(value: boolean): void
+    /**
+     * Establecer el administrador de tareas
+     * @param v 
+     */
     setTaskManager(v: TaskManager | null): void
+    /**
+     * Obtener el administrador de tareas
+     */
     getTaskManager(): TaskManager | null
+    /**
+     * Obtener los escuchadores del validador
+     */
     listeners(): {
         createSetTaskManagerListener(): ListenerController<[taskManager: TaskManager | null]>
         /**
          * Devolver validaciones de los campos del modelo
          */
-        createValidationBroadcastListener(): ListenerController<[], [PropertyKey, boolean], `To validate in props of ${Name}`>
+        createValidationBroadcastListener(): ListenerController<[], [PropertyKey, boolean] | Promise<[PropertyKey, boolean]>, `To validate in props of ${Name}`>
     }
 }
 
 export interface FormEventsController<Model, Description extends string = string> {
 
+    /**
+     * Obtener los escuchadores de eventos del formulario
+     */
     listeners(): {
         /**
         * Crear escuchador unico para cuando se modifiquen las propiedades
@@ -183,10 +248,27 @@ export interface FormEventsController<Model, Description extends string = string
         */
         createOnChangeListener(): ListenerController<[key: keyof Model, value: any], void | Promise<void>, `On change props in ${Description}`>
     }
+    /**
+     * Obtener si el formulario está deshabilitado
+     */
     getDisabled(): boolean
+    /**
+     * Establecer si el formulario está deshabilitado
+     * @param value 
+     */
     setDisabled(value: boolean): void
+    /**
+     * Obtener si el formulario tiene el foco
+     */
     getFocused(): boolean
+    /**
+     * Establecer si el formulario tiene el foco
+     * @param value 
+     */
     setFocused(value: boolean): void
+    /**
+     * Obtener los suscriptores de estado del formulario
+     */
     subscribers(): {
         createDisabledSubscriber(): SubscriberController<boolean>
         createFocusedSubscriber(): SubscriberController<boolean>
@@ -231,6 +313,9 @@ export interface LoaderController<Props extends any[], T, Description extends st
         createOnErrorListener(): ListenerController<[error: any], void | Promise<void>, `On task error of ${Description}`>
     }
 
+    /**
+     * Obtener una versión de solo lectura del controlador de carga
+     */
     readOnly(): {
         isLoading(): boolean
         listeners: LoaderController<Props, T, Description>["listeners"]
@@ -239,14 +324,46 @@ export interface LoaderController<Props extends any[], T, Description extends st
 }
 
 export interface TaskManager<TKey extends string | number = string, Name extends string = string> {
+    /**
+     * Añadir una tarea
+     * @param key 
+     * @param fun 
+     */
     addTask(key: TKey, fun: () => Promise<any>): TaskManager<TKey>
+    /**
+     * Eliminar una tarea
+     * @param key 
+     */
     removeTask(key: TKey): TaskManager<TKey>
+    /**
+     * Crear una instancia de tarea
+     */
     createTaskInstance(): Task<TKey>
+    /**
+     * Ejecutar todas las tareas
+     */
     execTasks(): Promise<void>
+    /**
+     * Reiniciar las tareas
+     */
     resetTasks(): void
+    /**
+     * Verificar si se están ejecutando tareas
+     */
     isExecuting(): boolean
+    /**
+     * Detener la ejecución de tareas
+     */
     stop(): void
+    /**
+     * Establecer un validador para una tarea específica
+     * @param key 
+     * @param validator 
+     */
     setTaskValidator(key: TKey, validator: ValidatorController<any> | null): void
+    /**
+     * Obtener los escuchadores del administrador de tareas
+     */
     listeners(): {
         createStartExecutionListener(): ListenerController<[], void | Promise<void>, `On start execution task of ${Name}`>
         createEndExecutionListener(): ListenerController<[], void | Promise<void>, `On end execution task of ${Name}`>
@@ -256,14 +373,36 @@ export interface TaskManager<TKey extends string | number = string, Name extends
 }
 
 export interface Task<TKey extends string | number = string, Name extends string = string> {
+    /**
+     * Establecer la función de la tarea
+     * @param fun 
+     */
     setTask(fun: () => Promise<any>): TaskManager<TKey>
+    /**
+     * Eliminar la tarea
+     */
     remove(): void
 }
 
 export interface TimerController<CompleteParams extends any[] = any[], Name extends string = string> {
+    /**
+     * Iniciar el temporizador
+     * @param time Tiempo total
+     * @param per Periodo de actualización
+     * @param resolve Función a ejecutar al completar
+     */
     start(time: number, per: number, resolve: () => CompleteParams): void
+    /**
+     * Detener el temporizador
+     */
     stop(): void
+    /**
+     * Pausar el temporizador
+     */
     pause(): void
+    /**
+     * Obtener los escuchadores del temporizador
+     */
     listeners(): {
         createOnStartedListener(): ListenerController<[percent: number], void | Promise<void>, `On start timer ${Name}`>
         createOnPausedListener(): ListenerController<[percent: number], void | Promise<void>, `On paused timer ${Name}`>
@@ -619,6 +758,19 @@ export default class GroupEvent {
                         },
                     }
                 },
+                switch: async () => {
+                    if (typeof _value == "boolean")
+                        await ob.next(!_value as any);
+                    return _value as boolean;
+                },
+                async increment(value) {
+                    await ob.next((_value as number + (value != undefined ? value : 1)) as any);
+                    return _value as number;
+                },
+                async decrement(value) {
+                    await ob.next((_value as number - (value != undefined ? value : 1)) as any);
+                    return _value as number;
+                },
                 createSubscriber: (name?: string, callback?: (value: T) => Promise<void> | void, noFirstCall?: boolean, doOneTime?: boolean) => {
                     let _listener: ListenerController<[value: T]> | null | undefined = null;
 
@@ -966,14 +1118,22 @@ export default class GroupEvent {
     createValidator<Model extends object, Name extends string = string>(name: Name): ValidatorController<Model, Name> {
         let _config = { debug: false };
         let _debuger = makeDebuger(_config);
-        let _props: Partial<Record<keyof Model, EventObservableController<boolean>>> = {};
         let _taskManager: TaskManager | null = null;
+        const _joins: Record<string, ListenerController<[], [PropertyKey, boolean] | Promise<[PropertyKey, boolean]>, string>> = {};
+        const _validatorJoins: Record<string, ValidatorController<any>> = {};
         const _setTaskManager = this.createEvent("setTaskManager." + name)<[taskManager: TaskManager | null]>();
         const _makeValidations = this.createBroadcast("dovalidation." + name)<[], [PropertyKey, boolean]>();
         const _onChange = this.createEvent("on-change." + name)<[key: keyof Model, value: any]>();
         const _disabled = this.createObservavble("disabled" + name)<boolean>(false);
         const _focused = this.createObservavble("focused" + name)<boolean>(false);
         let _model: Model | undefined;
+
+        const _forAllValidatorsJoined = async (callback: (validator: ValidatorController<any>) => Promise<void> | void) => {
+            await Object.values(_validatorJoins).reduce(async (ac, validator) => {
+                await ac;
+                await callback(validator);
+            }, Promise.resolve());
+        }
 
         // do not call functions from listener controller instances before return.
         return {
@@ -994,12 +1154,14 @@ export default class GroupEvent {
                         return _disabled.get();
                     },
                     setDisabled(value: boolean) {
+                        _forAllValidatorsJoined((v) => v.getEvents().setDisabled(value));
                         return _disabled.next(value);
                     },
                     getFocused() {
                         return _focused.get();
                     },
                     setFocused(value) {
+                        _forAllValidatorsJoined((v) => v.getEvents().setFocused(value));
                         return _focused.next(value);
                     },
                     subscribers: () => ({
@@ -1043,14 +1205,24 @@ export default class GroupEvent {
                 return _taskManager;
             },
 
+            join(key, validator) {
+                if (!_joins[key] && validator) {
+                    _validatorJoins[key] = validator;
+                    _joins[key] = this.listeners().createValidationBroadcastListener();
+                    _joins[key].on(async () => {
+                        return [key, await validator.doValidation()];
+                    });
+                } else if (_joins[key] && !validator) {
+                    _joins[key].remove();
+                    delete _joins[key];
+                    delete _validatorJoins[key];
+                }
+            },
+
             async doValidation() {
                 const valid = (await _makeValidations.broadcastEmit())?.reduce((ac, d) => {
                     if (!ac)
                         return false;
-                    const prop = _props[d[0] as keyof Model];
-                    if (prop) {
-                        prop.next(d[1]);
-                    }
                     return d[1];
                 }, true);
                 if (valid != undefined)
@@ -1182,5 +1354,3 @@ export default class GroupEvent {
         }
     }
 }
-
-
