@@ -7,8 +7,8 @@ import { v4 } from "uuid"
  * Crear un grupo de eventos
  * @returns 
  */
-export function eventer() {
-    return new GroupEvent;
+export function eventer(name?: string, isDebugModeOn?: boolean) {
+    return new GroupEvent(name, isDebugModeOn);
 }
 
 export type EventOptions = {
