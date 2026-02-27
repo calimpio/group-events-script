@@ -2,7 +2,7 @@
 
 -----
 
-<img src="./eventer_logo.png">
+<img src="./eventer_logo.svg" width="60%" style="display: flex; aling-items: center; justify-content: center; margin: auto;">
 
 # Documentación de la Librería Eventer
 
