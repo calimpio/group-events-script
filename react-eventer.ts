@@ -42,7 +42,7 @@ export function useSubscriber<T>(observable?: ObservableOrSubscriberFunctionInst
     [ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>] {
     const [subscriber] = useState(typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber());
     const [subscriber2] = useState(callback2 ? (typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber()) : undefined);
-    useEffect(() => { callback2 && subscriber2?.subscribe(callback2); return () => callback2 && subscriber2?.unsubscribe() }, []);    
+    useEffect(() => { callback2 && subscriber2?.subscribe(callback2); return () => callback2 && subscriber2?.unsubscribe() }, []);
     const subs = subscriber as ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>
     return [subs]
 }
@@ -74,7 +74,7 @@ export function useSubscriberData<T>(observable?: ObservableOrSubscriberFunction
     const [subscriber] = useSubscriber(observable, (v) => {
         setValue(() => [v]);
     });
-    
+
     return [value?.[0], subscriber]
 }
 
@@ -125,36 +125,43 @@ export function useTask(callback: () => Promise<void>, execute?: boolean) {
 
 /**
  * Crear validador
+ * @param model 
+ * @param buildValidator si es `false` no se crea en validador por defecto está en `true`
  * @returns 
  */
-export function useValidator<T extends object>(model?: T): [ValidatorController<T>, T | undefined] {
+export function useValidator<T extends object>(model?: T, buildValidator: boolean = true): [ValidatorController<T> | undefined, T | undefined] {
     const [events] = useState(eventer());
-    const [validator] = useState(events.createValidator<T>("validator"));
+    const [validator] = useState((buildValidator && events.createValidator<T>("validator"))|| undefined);
     useEffect(() => {
-        model && validator.setModel(model);
+        model && validator?.setModel(model);
     }, [model])
     return [validator, model];
 }
 
+/**
+ * Crear un validador con un modelo
+ * @param model  
+ * @returns 
+ */
 export function useValidatorModel<T extends object>(model: T): [ValidatorController<T>, T] {
     const [validator] = useValidator<T>(model);
     const [model2] = useState(model);
-    return [validator, model2]
+    return [validator!, model2]
 }
 
 /**
  * Crea un nuevo validador y lo adjunta a un validador padre. Recmendado para hacer validaciones anidadas.
+ * Si `key` o `validator` son `undefined` o `null` no se crea el `join`
  * @param key 
  * @param validator 
  * @returns 
  */
-export function useValidatorJoin<T extends object>(key: string, validator: ValidatorController<any>): [ValidatorController<T>] {
-    const [newValidator] = useValidator<T>(); 
-
-    useEffect(()=>validator.join(key, newValidator),[]);
-    useEffect(() => {        
+export function useValidatorJoin<T extends object>(key?: string|null, validator?: ValidatorController<any>|null): [ValidatorController<T> | undefined] {
+    const [newValidator] = useValidator<T>(undefined, !key || !validator);
+    useEffect(() => { key && newValidator && validator?.join(key, newValidator) }, []);
+    useEffect(() => {
         return () => {
-            validator.join(key, null);
+            key && validator?.join(key, null);
         }
     }, []);
     return [newValidator];
@@ -229,7 +236,7 @@ export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
          * @param item 
          * @returns 
          */
-        update(item: T){
+        update(item: T) {
             return () => {
                 const index = data.indexOf(item);
                 if (index !== -1) {
@@ -244,7 +251,7 @@ export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
          * @param item 
          * @returns 
          */
-        updateByIndex(index: number, item: T){
+        updateByIndex(index: number, item: T) {
             return () => {
                 data[index] = item;
                 setArray(() => [...data]);
@@ -256,29 +263,29 @@ export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
          * @returns
          */
         updateAll(callback: (item: T) => T) {
-            return ()=>{
+            return () => {
                 setArray(() => data.map(callback));
-            }  
-        }, 
+            }
+        },
         /**
          * Mover un modelo de un indice a otro
          * @param from referecia incial
          * @param to destino
          * @returns 
          */
-        move(from: number, to: number){
+        move(from: number, to: number) {
             return () => {
                 const item = data[from];
                 data.splice(from, 1);
                 data.splice(to, 0, item);
-                setArray(() => [...data]);            
+                setArray(() => [...data]);
             }
         },
         /**
          * Obtener la lista original
          * @returns 
          */
-        getArray(){
+        getArray() {
             return data;
         }
     }

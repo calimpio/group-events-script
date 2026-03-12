@@ -1,25 +1,29 @@
 {
   "name": "orquest-eventer",
-  "version": "3.2.9",
+  "version": "3.3.0",
   "description": "Libreria para gestionar eventos en las apps",
   "main": "./index.ts",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --verbose"
   },
   "author": "Camilo Barbosa",
   "license": "MIT",
-  "repository":"https://github.com/calimpio/eventer",
+  "repository": "https://github.com/calimpio/eventer",
   "dependencies": {
     "eventer": "file:",
+    "react": "^19.0.0",
     "sha256": "^0.2.0",
     "typescript": "^5.7.2",
-    "uuid": "^11.1.0",
-    "react": "^19.0.0"
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.0.7",
-    "@types/react-dom": "^19.0.3",    
-    "react-dom": "^19.0.0"
+    "@types/react-dom": "^19.0.3",
+    "jest": "^30.3.0",
+    "react-dom": "^19.0.0",
+    "ts-jest": "^29.4.6"
   }
 }

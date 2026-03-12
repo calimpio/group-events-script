@@ -76,7 +76,7 @@ Eventer es ideal para desacoplar la lógica de negocio de la interfaz de usuario
 ## Instalación
 
 ```bash
-npm i orquest-eventer@3.2.9
+npm i orquest-eventer@3.3.0
 ```
 
 -----
@@ -1055,3 +1055,31 @@ function TodoList() {
       *   **Ejecución Segura (`emitSettled`)**: Utiliza los métodos `*Settled` para obtener un reporte detallado de la ejecución (`EmitResult`) que incluye tanto los resultados exitosos como una lista de errores con contexto (`EventErrorContext`), evitando bloques `try-catch` externos.
   * **Depuración**: Utiliza el modo de depuración (`isDebugModeOn` en `GroupEvent` o `setDebug` en `ValidatorController`) para obtener logs útiles en la consola.
   * **Integración con React**: Los hooks y la provisión de `SubscriberControllerReact` facilitan la reactividad de tus componentes con observables. Recuerda manejar el ciclo de vida de las suscripciones (desuscribirse en el cleanup de `useEffect`) para evitar fugas de memoria.
+
+
+## Pruebas Unitarias 🧪
+
+La librería incluye un conjunto completo de pruebas automatizadas que validan el comportamiento de todos los controladores (`EventController`, `Broadcast`, `Observable`, `Loader`, `TaskManager`, `Validator`, `Timer`, etc.). Se utilizan **Jest** y **ts‑jest** para ejecutar el código TypeScript en un entorno Node.
+
+### Configuración
+
+1. Instala dependencias de desarrollo (ya están listadas en `devDependencies`):
+   ```bash
+   npm install
+   ```
+
+2. Asegúrate de que el archivo `jest.config.cjs` existe en la raíz (incluido en este proyecto) con soporte ESM y TypeScript.
+
+### Ejecutar pruebas
+
+```bash
+npm test
+```
+
+El comando ejecuta todas las pruebas en `test/**/*.ts` y muestra un informe detallado de resultados. Puedes ejecutar `npm test -- --watch` para un modo de vigilancia durante desarrollo.
+
+> **Tip**: los temporizadores en las pruebas usan `jest.useFakeTimers()` y los métodos `runAllTimersAsync` para simular el comportamiento de `createTimer` sin esperas reales.
+
+---
+
+Puedes referirte a los casos de prueba como ejemplos prácticos de uso de cada API cuando estés desarrollando nuevas funcionalidades o integrando `eventer` en tu aplicación.
