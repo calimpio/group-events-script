@@ -17,6 +17,7 @@ type EventOrBroadcastOrListenerFunctionInstancer<Props extends any[], Returns> =
  * @param observable 
  * @param callback2 funcion adicional si se desea 
  * @returns 
+ * @description Se va usar ahora es `useSuscriber`
  */
 export function useObservable<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void):
     [ObservableOrSubscriberFunctionInstancer<T> extends undefined ? unknown : T, ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>, boolean] {
@@ -31,6 +32,27 @@ export function useObservable<T>(observable?: ObservableOrSubscriberFunctionInst
     return [value, subs, state[0]]
 }
 
+/**
+ * Crea un susbcriptor para escuchar si el contenido de un observador al modifcarse sin re renderizar la vista
+ * @param observable 
+ * @param callback2 funcion adicional si se desea 
+ * @returns 
+ */
+export function useSubscriber<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void):
+    [ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>] {
+    const [subscriber] = useState(typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber());
+    const [subscriber2] = useState(callback2 ? (typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber()) : undefined);
+    useEffect(() => { callback2 && subscriber2?.subscribe(callback2); return () => callback2 && subscriber2?.unsubscribe() }, []);    
+    const subs = subscriber as ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>
+    return [subs]
+}
+
+/**
+ * 
+ * @param observable 
+ * @returns 
+ * @description se va usar ahora `useSubscriberData`
+ */
 export function useObservableData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>):
     [T | undefined, (value: T, force?: boolean) => void] {
     const [value, setValue] = useState<T | undefined>()
@@ -38,6 +60,22 @@ export function useObservableData<T>(observable?: ObservableOrSubscriberFunction
         setValue(() => v);
     });
     return [value, subscriber?.next]
+}
+
+
+/**
+ * Obtener el valor del observable renderizando la vista en cada cambio.
+ * @param observable 
+ * @returns 
+ */
+export function useSubscriberData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>):
+    [T | undefined, SubscriberController<T, string>] {
+    const [value, setValue] = useState<[T] | undefined>()
+    const [subscriber] = useSubscriber(observable, (v) => {
+        setValue(() => [v]);
+    });
+    
+    return [value?.[0], subscriber]
 }
 
 
@@ -111,8 +149,7 @@ export function useValidatorModel<T extends object>(model: T): [ValidatorControl
  * @returns 
  */
 export function useValidatorJoin<T extends object>(key: string, validator: ValidatorController<any>): [ValidatorController<T>] {
-    const [newValidator] = useValidator<T>();
-    
+    const [newValidator] = useValidator<T>(); 
 
     useEffect(()=>validator.join(key, newValidator),[]);
     useEffect(() => {        

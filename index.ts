@@ -1,6 +1,3 @@
-// v: 3.0.5
-// Ftd: (Feactures to dev)
-
 import { v4 } from "uuid"
 
 /**
@@ -145,13 +142,13 @@ export type EventObservableController<T, Name = string> = {
     switch(): Promise<boolean>
     /**
      * Incrementa el valor del obsevable
-     * @param value 
+     * @param value si es `undefined` se incrementa en +1
      */
     increment(value?: number): Promise<number>
 
     /**
      * Decrementa el valor del obsevable
-     * @param value 
+     * @param value si es `undefined` se reduce en -1
      */
     decrement(value?: number): Promise<number>
 }
@@ -168,13 +165,31 @@ export interface SubscriberController<T, Name = string> {
      * Modificar valor
      * @param value 
      * @returns 
-     */
+     */    
     next: (value: T, force?: boolean) => Promise<T>;
+
     /**
      * Eliminar evento
      * @returns 
      */
     unsubscribe: () => void
+
+    /**
+     * Alterna el valor de un observable boleano.
+     */
+    switch(): Promise<boolean>
+    /**
+     * Incrementa el valor del obsevable
+     * @param value si es `undefined` se incrementa en +1
+     */
+    increment(value?: number): Promise<number>
+
+    /**
+     * Decrementa el valor del obsevable
+     * @param value si es `undefined` se reduce en -1
+     */
+    decrement(value?: number): Promise<number>
+
     /**
      * Obtener el valor
      */
@@ -195,7 +210,8 @@ export interface SubscriberControllerReact<T, Name = string> {
     updateEffect(state: [boolean, (v: boolean) => void]): () => () => void
 }
 
-export type SubscriberReaderController<T, Name = string> = Omit<SubscriberController<T, Name>, "next">
+export type SubscriberReaderController<T, Name = string> = 
+    Omit<SubscriberController<T, Name>, "next" | "switch" | "increment" | "decrement">
 
 export interface EventObservableReaderController<T, Name = string> {
     /**
@@ -1011,7 +1027,19 @@ export default class GroupEvent {
                                     }
                                 }
                             }
-                        }
+                        },
+
+                        switch() {                           
+                            return ob.switch();
+                        },
+
+                        increment(value) {                            
+                            return ob.increment(value);
+                        },
+
+                        decrement(value) {                            
+                            return ob.decrement(value);
+                        },
                     }
                 },
                 get() {
