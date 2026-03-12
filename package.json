@@ -1,6 +1,6 @@
 {
   "name": "orquest-eventer",
-  "version": "3.2.6",
+  "version": "3.2.9",
   "description": "Libreria para gestionar eventos en las apps",
   "main": "./index.ts",
   "type": "module",

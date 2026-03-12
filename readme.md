@@ -1,5 +1,5 @@
 
-**Versión: 3.2.6**
+**Versión: 3.2.9**
 
 -----
 
@@ -9,7 +9,44 @@
 
 Eventer es una librería de gestión de eventos robusta y versátil para TypeScript, diseñada para actuar como un **orquestador de lógica de aplicación**. Facilita la comunicación entre componentes, la gestión de estados reactivos y la orquestación de tareas asíncronas en aplicaciones JavaScript. Proporciona una API rica y tipada que abarca desde eventos simples hasta patrones más complejos como observables, loaders, managers de tareas y validadores de formularios, e incluye hooks de React para una integración fluida.
 
-## Lo Nuevo en la Versión 3.2.6
+## Contenido
+
+1. [Lo Nuevo en la Versión 3.2.x](#lo-nuevo-en-la-versi%C3%B3n-32x)
+2. [¿Por qué usar Eventer?](#por-qué-usar-eventer)
+3. [Ejemplo práctico](#ejemplo-práctico)
+4. [Instalación](#instalaci%C3%B3n)
+5. [Uso Básico](#uso-b%C3%A1sico)
+6. [Tipos de Controladores y Funcionalidades](#tipos-de-controladores-y-funcionalidades)
+   - [ListenerController](#listenercontroller)
+   - [EventController](#eventcontroller)
+   - [EventBroadcastController](#eventbroadcastcontroller)
+   - [EventObservableController](#eventobservablecontroller)
+   - [LoaderController](#loadercontroller)
+   - [TaskManager](#taskmanager)
+   - [ValidatorController](#validatorcontroller)
+   - [TimerController](#timercontroller)
+7. [Ejemplos Avanzados](#ejemplos-avanzados)
+   - [Eventos simples (`EventController`)](#eventos-simples-con-eventcontroller)
+   - [Eventos broadcast para consultas distribuidas](#eventos-broadcast-para-consultas-distribuidas)
+   - [Observables y suscriptores](#observables-y-suscriptores)
+   - [LoaderController para tareas asíncronas](#loadercontroller-para-tareas-asíncronas)
+   - [Orquestación con TaskManager](#orquestacion-con-taskmanager)
+   - [Validadores y formularios](#validadores-y-formularios)
+8. [Hooks de React para Eventer](#hooks-de-react-para-eventer)
+   - [useListener](#uselistener)
+   - [useObservable (obsoleto)](#useobservable-obsoleto)
+   - [useSubscriber](#usesubscriber)
+   - [useSubscriberData (recomendado)](#usesubscriberdata-recomendado)
+   - [useObservableData (obsoleto)](#useobservabledata-obsoleto)
+   - [useGlobalTaskManager](#useglobaltaskmanager)
+   - [useTask](#usetask)
+   - [useValidator](#usevalidator)
+   - [useValidatorModel](#usevalidatormodel)
+   - [useValidatorJoin](#usevalidatorjoin)
+   - [useArray](#usearray)
+9. [Consideraciones de Desarrollo](#consideraciones-de-desarrollo)
+
+## Lo Nuevo en la Versión 3.2.x
 
 Esta versión introduce mejoras significativas en la gestión de eventos, el estado reactivo y la integración con React, haciendo la librería más potente y fácil de usar.
 
@@ -36,7 +73,25 @@ Eventer es ideal para desacoplar la lógica de negocio de la interfaz de usuario
 
 -----
 
-### Ejemplo
+## Instalación
+
+```bash
+npm i orquest-eventer@3.2.9
+```
+
+-----
+
+## Uso Básico
+
+Para comenzar, importa la función `eventer` y crea una instancia de `GroupEvent`:
+
+```typescript
+import { eventer } from "orquest-eventer";
+
+const appEvents = eventer("myApp"); // "myApp" es un prefijo opcional para los nombres de eventos, útil para depuración.
+```
+
+### Ejemplo práctico
 ```typescript
 import { eventer } from "orquest-eventer";
 import { useListener } from "orquest-eventer/react-eventer";
@@ -49,9 +104,7 @@ const events = eventer();
 //2. defines tus eventos
 const pushNotification = events.createEvent("pushNotification")<[children: React.ReactNode, duration: number, position?: NotificationProps["position"]]>()
 
-interface NotificationsViewProps {
-
-}
+interface NotificationsViewProps {}
 
 const Notifications = function ({ }: NotificationsViewProps){
     const [notifications, setNotifications ] = useState<{children: React.ReactNode, duration: number, position?: NotificationProps["position"]}[]>([])
@@ -77,31 +130,7 @@ const Notifications = function ({ }: NotificationsViewProps){
 export default Notifications;
 
 //4. Distribuir los eventos
-/**
- * Lanzar una notificaion 
- * @param childern 
- * @param duration
- * @param position
- */
 Notifications.pushNotification = pushNotification.emit;
-```
-
-## Instalación
-
-```bash
-npm i orquest-eventer@3.2.6
-```
-
------
-
-## Uso Básico
-
-Para comenzar, importa la función `eventer` y crea una instancia de `GroupEvent`:
-
-```typescript
-import { eventer } from "orquest-eventer";
-
-const appEvents = eventer("myApp"); // "myApp" es un prefijo opcional para los nombres de eventos, útil para depuración.
 ```
 
 -----
@@ -110,7 +139,7 @@ const appEvents = eventer("myApp"); // "myApp" es un prefijo opcional para los n
 
 Eventer ofrece varios tipos de controladores, cada uno diseñado para un caso de uso específico:
 
-### 1\. `ListenerController<Props, Returns, Description>`
+### ListenerController
 
 El **`ListenerController`** es la interfaz fundamental para gestionar un único escuchador de eventos.
 
@@ -123,7 +152,7 @@ El **`ListenerController`** es la interfaz fundamental para gestionar un único 
 
 -----
 
-### 2\. `EventController<Props, Name>`
+### EventController
 
 Permite crear y gestionar **eventos unidireccionales**. Son útiles para notificar a los suscriptores que algo ha ocurrido.
 
@@ -171,7 +200,7 @@ Permite crear y gestionar **eventos unidireccionales**. Son útiles para notific
 
 -----
 
-### 3\. `EventBroadcastController<Props, Returns, Name>`
+### EventBroadcastController
 
 Similar a `EventController`, pero permite que los escuchadores **devuelvan un valor**, y `broadcastEmit` recopila todas estas respuestas. Ideal para validaciones o consultas distribuidas.
 
@@ -211,7 +240,7 @@ Similar a `EventController`, pero permite que los escuchadores **devuelvan un va
 
 -----
 
-### 4\. `EventObservableController<T, Name>`
+### EventObservableController
 
 Implementa un patrón **observable**, permitiendo que un valor sea observado y notifique a los suscriptores cuando cambie. Es similar a un `Subject` de RxJS.
 
@@ -277,7 +306,7 @@ Controla una suscripción individual a un observable.
 
 -----
 
-### 5\. `LoaderController<Props, T, Description>`
+### LoaderController
 
 Gestiona el ciclo de vida de una **tarea asíncrona**, proporcionando estados de carga y eventos para éxito o error.
 
@@ -312,7 +341,7 @@ Gestiona el ciclo de vida de una **tarea asíncrona**, proporcionando estados de
 
 -----
 
-### 6\. `TaskManager<TKey, Name>`
+### TaskManager
 
 Permite **gestionar y ejecutar múltiples tareas asíncronas** de forma secuencial. Ideal para flujos de trabajo con dependencias o validaciones en cascada.
 
@@ -348,7 +377,7 @@ Permite **gestionar y ejecutar múltiples tareas asíncronas** de forma secuenci
 
 -----
 
-### 7\. `ValidatorController<Model, Name>`
+### ValidatorController
 
 Proporciona una estructura para la **validación de modelos de formularios**, integrando la reactividad y la gestión de eventos.
 
@@ -505,7 +534,7 @@ export const Input = <T extends object>({
 ```
 -----
 
-### 8\. `TimerController<CompleteParams, Name>`
+### TimerController
 
 Permite crear y controlar un **temporizador** con eventos para cada etapa de su ciclo de vida.
 
@@ -536,13 +565,89 @@ Permite crear y controlar un **temporizador** con eventos para cada etapa de su 
 
 -----
 
+## Ejemplos Avanzados
+
+A continuación encontrarás ejemplos prácticos que muestran cómo utilizar diferentes partes de Eventer en escenarios reales.
+
+### Eventos simples con `EventController`
+```typescript
+import { eventer } from "orquest-eventer";
+
+const app = eventer();
+const loginEvent = app.createEvent("login")<[userId: string]>();
+
+// registrar un escuchador
+loginEvent.createListener().on(userId => {
+    console.log("usuario ingresado", userId);
+});
+
+// emitir el evento
+await loginEvent.emit("abc123");
+
+// manejar errores con emitSettled
+const failingEvent = app.createEvent("failing")<[]>();
+failingEvent.createListener().on(() => { throw new Error("boom"); });
+const result = await failingEvent.emitSettled();
+if (!result.success) {
+    console.error("Errores capturados:", result.errors);
+}
+```
+
+### Eventos broadcast para consultas distribuidas
+```typescript
+const validator = app.createBroadcast("check")<[value: number], boolean>();
+validator.createBroadcastListener().on(v => v > 0);
+validator.createBroadcastListener().on(v => v % 2 === 0);
+
+const answers = await validator.broadcastEmit(4); // [true, true]
+```
+
+### Observables y suscriptores
+```typescript
+const state = app.createObservable("counter")<number>(0);
+const sub = state.createSubscriber("ui", val => console.log("cont", val));
+
+await state.next(1);      // imprime 'cont 1'
+await sub.next(5);        // el suscriptor también puede cambiar el valor
+```
+
+### LoaderController para tareas asíncronas
+```typescript
+const loader = app.createLoader("fetch", (url: string) => fetch(url).then(r => r.json()));
+loader.listeners().createOnErrorListener().on(err => console.error("failed", err));
+
+await loader.exec("https://jsonplaceholder.typicode.com/todos/1");
+```
+
+### Orquestación con TaskManager
+```typescript
+const mgr = app.createTasksManager("flow");
+mgr.addTask("step1", async () => console.log("primer paso"));
+mgr.addTask("step2", async () => console.log("segundo paso"));
+
+await mgr.execTasks();
+```
+
+### Validadores y formularios
+```typescript
+interface Form { name: string; age: number; }
+const valid = app.createValidator<Form>("form");
+valid.setModel({ name: "", age: 0 });
+valid.listeners().createValidationBroadcastListener().on(async () => {
+  const model = valid.getModel();
+  return !!model?.name && model.age > 0;
+});
+
+const ok = await valid.doValidation(); // boolean
+```
+
 ## Hooks de React para Eventer
 
 Eventer proporciona un conjunto de hooks de React para integrar fácilmente sus controladores de eventos y observables con el ciclo de vida de los componentes funcionales, permitiendo una gestión de estado y una comunicación entre componentes más **reactiva** y **declarativa**.
 
 -----
 
-### 1\. `useListener<Props extends any[], Returns>(event: EventOrBroadcastOrListenerFunctionInstancer<Props, Returns>, callback?: (...props: Props) => (EventOrBroadcastOrListenerFunctionInstancer<Props, Returns> extends EventBroadcastController<Props, Returns> ? Promise<Returns> : EventOrBroadcastOrListenerFunctionInstancer<Props, Returns> extends EventBroadcastController<Props, Returns>["createBroadcastListener"] ? Promise<Returns> : void))`
+### useListener
 
 Este hook permite a un componente de React **escuchar eventos** creados con `EventController` o `EventBroadcastController`, o directamente a un "listener instancer" (una función que crea un escuchador). El escuchador se registrará cuando el componente se monte y se limpiará automáticamente cuando el componente se desmonte.
 
@@ -585,7 +690,7 @@ function UserStatusMessage() {
 
 -----
 
-### 2\. `useObservable<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void)`
+### useObservable (obsoleto)
 
 > **Obsoleto**: Se recomienda usar `useSubscriberData` para obtener el valor reactivo y `useSubscriber` para efectos secundarios.
 
@@ -632,7 +737,7 @@ function UserNameDisplay() {
 
 -----
 
-### 3\. `useSubscriber<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void)`
+### useSubscriber
 
 Crea un suscriptor para un observable pero **no** re-renderiza el componente. Es útil para ejecutar efectos secundarios en respuesta a cambios en el observable sin afectar la UI.
 
@@ -647,7 +752,7 @@ Retorna una tupla con el `SubscriberController`: `[subscriber]`.
 
 -----
 
-### 4\. `useSubscriberData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>)` (Recomendado)
+### useSubscriberData (recomendado)
 
 Este hook se suscribe a un observable y devuelve su valor actual, re-renderizando el componente en cada cambio. Es la forma recomendada de consumir datos de un observable en la UI.
 
@@ -687,7 +792,7 @@ function UserProfileEditor() {
 
 -----
 
-### 5\. `useObservableData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>)`
+### useObservableData (obsoleto)
 
 > **Obsoleto**: Se recomienda usar `useSubscriberData`.
 
@@ -706,7 +811,7 @@ Retorna una tupla `[value, next]`:
 
 -----
 
-### 6\. `useGlobalTaskManager()`
+### useGlobalTaskManager
 
 Este hook proporciona acceso a una instancia global de **`TaskManager`**, preconfigurada para tu aplicación. Permite gestionar y orquestar secuencias de tareas asíncronas desde cualquier componente de forma centralizada.
 
@@ -740,7 +845,7 @@ function TaskProgressMonitor() {
 
 -----
 
-### 7\. `useTask(callback: () => Promise<void>, execute?: boolean)`
+### useTask
 
 Este hook permite **crear una tarea asíncrona** y añadirla a la instancia global de `TaskManager`. Es útil para encapsular operaciones asíncronas dentro de un componente que deben ser gestionadas por un orquestador de tareas.
 
@@ -783,7 +888,7 @@ function DataSyncComponent() {
 
 -----
 
-### 8\. `useValidator<T extends object>(model?: T)`
+### useValidator
 
 Crea y mantiene una instancia de `ValidatorController` durante el ciclo de vida de un componente. Es el punto de partida para gestionar validaciones de formularios.
 
@@ -812,7 +917,7 @@ function RegistrationForm() {
 
 -----
 
-### 9\. `useValidatorModel<T extends object>(model: T)`
+### useValidatorModel
 
 Este es un hook de conveniencia que combina `useValidator` y la inicialización del modelo en un solo paso. Es ideal cuando el modelo ya está disponible en el momento en que se renderiza el componente.
 
@@ -841,7 +946,7 @@ function UserProfile({ initialData }) {
 
 -----
 
-### 10\. `useValidatorJoin<T extends object>(key: string, validator: ValidatorController<any>)`
+### useValidatorJoin
 
 Un hook esencial para formularios anidados. Crea un nuevo `ValidatorController` (hijo) y lo une automáticamente a un validador padre en una propiedad específica (`key`). La validación del padre dependerá del resultado de la validación del hijo.
 
@@ -888,7 +993,7 @@ function UserForm() {
 
 -----
 
-### 11\. `useArray<T, P>(data: Array<T>, create: (parent?: P) => T)`
+### useArray
 
 Un hook de utilidad para gestionar arrays en el estado de React. Proporciona métodos convenientes para operaciones CRUD (Crear, Leer, Actualizar, Eliminar) que actualizan la vista automáticamente, evitando la manipulación manual del estado del array.
 
