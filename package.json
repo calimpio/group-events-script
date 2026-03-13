@@ -1,6 +1,6 @@
 {
   "name": "orquest-eventer",
-  "version": "3.3.3",
+  "version": "3.3.5",
   "description": "Libreria para gestionar eventos en las apps",
   "main": "./index.ts",
   "type": "module",
@@ -18,12 +18,17 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "react-dom": "^19.0.0",
+    "react-test-renderer": "^19.2.4",
     "ts-jest": "^29.4.6"
   }
 }

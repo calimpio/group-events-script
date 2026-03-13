@@ -157,7 +157,7 @@ export function useValidatorModel<T extends object>(model: T): [ValidatorControl
  * @returns 
  */
 export function useValidatorJoin<T extends object>(key?: string|null, validator?: ValidatorController<any>|null): [ValidatorController<T> | undefined] {
-    const [newValidator] = useValidator<T>(undefined, !key || !validator);
+    const [newValidator] = useValidator<T>(undefined, !!key && !!validator);
     useEffect(() => { key && newValidator && validator?.join(key, newValidator) }, []);
     useEffect(() => {
         return () => {
