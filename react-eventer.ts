@@ -367,27 +367,3 @@ export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
     }
 }
 
-/**
- * Observar el conetenido de un EventObservableController o Subscriber
- * @param observable 
- * @param callback2 funcion adicional si se desea 
- * @returns 
- * @description Se va usar ahora es `useSuscriber`
- * @deprecated
- */
-export function useObservable<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void):
-    [ObservableOrSubscriberFunctionInstancer<T> extends undefined ? unknown : T, ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>, boolean] {
-    throw "useObservable is deprecated, use useSubscriber instead"
-}
-
-/**
- * 
- * @param observable 
- * @returns 
- * @description se va usar ahora `useSubscriberData`
- * @deprecated
- */
-export function useObservableData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>):
-    [T | undefined, (value: T, force?: boolean) => void] {
-    throw "useObservableData is deprecated, use useSubscriberData instead"
-}

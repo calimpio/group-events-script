@@ -1,5 +1,5 @@
 
-**Versión: 3.4.0**
+**Versión: 3.4.1**
 
 -----
 
@@ -92,7 +92,7 @@ Eventer es ideal para desacoplar la lógica de negocio de la interfaz de usuario
 ## Instalación
 
 ```bash
-npm i orquest-eventer@3.4.0
+npm i orquest-eventer@3.4.1
 ```
 
 -----
