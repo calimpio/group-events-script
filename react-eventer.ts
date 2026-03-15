@@ -1,4 +1,4 @@
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EventBroadcastController, EventController, eventer, EventObservableController, SubscriberController, ValidatorController } from "./index";
 
 
@@ -18,13 +18,27 @@ type EventOrBroadcastOrListenerFunctionInstancer<Props extends any[], Returns> =
  * @param callback2 funcion adicional si se desea 
  * @returns 
  */
-export function useSubscriber<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>, callback2?: (v: T) => void):
-    [ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>] {
-    const [subscriber] = useState(typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber());
-    const [subscriber2] = useState(callback2 ? (typeof observable == "function" && observable() || (observable as EventObservableController<T> | undefined)?.createSubscriber()) : undefined);
-    useEffect(() => { callback2 && subscriber2?.subscribe(callback2); return () => callback2 && subscriber2?.unsubscribe() }, []);
-    const subs = subscriber as ObservableOrSubscriberFunctionInstancer<T> extends undefined ? undefined : SubscriberController<T, string>
-    return [subs]
+export function useSubscriber<T>(
+    observable?: ObservableOrSubscriberFunctionInstancer<T>,
+    callback2?: (v: T) => void
+) {
+
+    const subscriber = useMemo(() => {
+        if (!observable) return undefined;
+        return typeof observable === "function"
+            ? observable()
+            : (observable as EventObservableController<T>).createSubscriber();
+    }, [observable]);
+
+    useEffect(() => {
+        if (!subscriber || !callback2) return;
+        subscriber.subscribe(callback2);
+        return () => {
+            subscriber.unsubscribe();
+        };
+    }, [subscriber, callback2]);
+
+    return [subscriber];
 }
 
 /**
@@ -33,13 +47,13 @@ export function useSubscriber<T>(observable?: ObservableOrSubscriberFunctionInst
  * @returns 
  */
 export function useSubscriberData<T>(observable?: ObservableOrSubscriberFunctionInstancer<T>):
-    [T | undefined, SubscriberController<T, string>] {
-    const [value, setValue] = useState<[T] | undefined>()
-    const [subscriber] = useSubscriber(observable, (v) => {
-        setValue(() => [v]);
-    });
-
-    return [value?.[0], subscriber]
+    [T | undefined, SubscriberController<T, string> | undefined] {
+    const [value, setValue] = useState<T | undefined>();
+    const handleChange = useCallback((v: T) => {
+        setValue(v);
+    }, []);
+    const [subscriber] = useSubscriber(observable, handleChange);
+    return [value, subscriber];
 }
 
 
@@ -50,11 +64,32 @@ export function useSubscriberData<T>(observable?: ObservableOrSubscriberFunction
  * @returns 
  */
 export function useListener<Props extends any[], Returns>(
-    event: EventOrBroadcastOrListenerFunctionInstancer<Props, Returns>,
+    event?: EventOrBroadcastOrListenerFunctionInstancer<Props, Returns>,
     callback?: (...props: Props) => EventOrBroadcastOrListenerFunctionInstancer<Props, Returns> extends EventBroadcastController<Props, Returns> ? Promise<Returns> :
         EventOrBroadcastOrListenerFunctionInstancer<Props, Returns> extends EventBroadcastController<Props, Returns>["createBroadcastListener"] ? Promise<Returns> : void) {
-    const [listener] = useState(typeof event == "function" && event() || (event as EventController<Props>)?.createListener());
-    useEffect(() => { (listener as any)?.on(callback); return () => listener?.remove(); }, [])
+    const callbackRef = useRef(callback);
+
+    useEffect(() => {
+        callbackRef.current = callback;
+    });
+
+    const listener = useMemo(() => {
+        if (!event) return undefined;
+        return typeof event === "function"
+            ? event()
+            : (event as any).createListener();
+    }, [event]);
+
+    useEffect(() => {
+        if (!listener || !callback) return;
+        const internalCallback = (...args: Props) => {
+            return callbackRef.current?.(...args);
+        };
+        listener.on(internalCallback as any);
+        return () => {
+            listener.remove();
+        }
+    }, [listener, callback])
     return null;
 }
 
@@ -76,14 +111,19 @@ export function useGlobalTaskManager() {
  * @returns 
  */
 export function useTask(callback: () => Promise<void>, execute?: boolean) {
-    const [task] = useState(taskManager.createTaskInstance());
+
+    const [task] = useState(() => taskManager.createTaskInstance());
+
     useEffect(() => {
         task.setTask(callback);
-        execute && taskManager.execTasks();
+        if (execute) {
+            taskManager.execTasks();
+        }
         return () => {
             task.remove();
-        }
-    }, [])
+        };
+    }, [task, callback, execute]);
+
     return taskManager;
 }
 
@@ -94,11 +134,14 @@ export function useTask(callback: () => Promise<void>, execute?: boolean) {
  * @returns 
  */
 export function useValidator<T extends object>(model?: T, buildValidator: boolean = true): [ValidatorController<T> | undefined, T | undefined] {
-    const [events] = useState(eventer());
-    const [validator] = useState((buildValidator && events.createValidator<T>("validator")) || undefined);
+    const validator = useMemo(() => {
+        if (!buildValidator) return undefined;
+        return eventer().createValidator<T>("validator");
+    }, [buildValidator]);
     useEffect(() => {
-        model && validator?.setModel(model);
-    }, [model])
+        if (!validator) return;
+        model && validator.setModel(model);
+    }, [validator, model])
     return [validator, model];
 }
 
@@ -125,21 +168,18 @@ export function useValidatorJoinLeft<S, T>(
     source?: ValidatorController<S> | null,
     target?: ValidatorController<T> | null,
     key?: string | null
-):
-    [ValidatorController<T> | undefined | null, ValidatorController<S> | undefined | null] {
-    const _key = useRef(key).current;
-    const _source = useRef(source).current;
-    const _target = useRef(target).current;
+): [ValidatorController<T> | undefined | null, ValidatorController<S> | undefined | null] {
     useEffect(() => {
-        if (_source && _target && _key) {
-            _source.join(_key, _target);
+        const activeSource = source;
+        const activeKey = key;
+        if (activeSource && target && activeKey) {
+            activeSource.join(activeKey, target);
             return () => {
-                _key && _source?.join(_key, null);
-            }
+                activeSource.join(activeKey, null);
+            };
         }
-    }, []);
-
-    return [_target, _source];
+    }, [source, target, key]);
+    return [target, source];
 }
 
 /**
@@ -150,8 +190,17 @@ export function useValidatorJoinLeft<S, T>(
  * @returns 
  */
 export function useValidatorJoin<T extends object>(key?: string | null, validator?: ValidatorController<any> | null): [ValidatorController<T> | undefined] {
-    const [newValidator] = useValidator<T>(undefined, !!key && !!validator);
+    const newValidator = useMemo(() => {
+        if (!key || !validator) return undefined;
+        return eventer().createValidator<T>("nested-validator");
+    }, [!!key, !!validator]);
     useValidatorJoinLeft(validator, newValidator, key)
+    useEffect(() => {
+        //
+        return () => {
+            //
+        };
+    }, [newValidator]);
     return [newValidator];
 }
 
@@ -176,27 +225,25 @@ interface InputProps<V> {
 export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, defaultValue?: V, validator?: ValidatorController<Record<K, V>>, validations?: (value: V) => boolean | Promise<boolean>):
     [InputProps<V>, ValidatorController<Record<K, V>> | undefined] {
 
-    const _model = useRef(validator?.getModel() || {} as Record<K, V>).current;
-    const _modelKey = useRef(modelKey).current;
-    const _validator = useRef(validator).current;
-    const [value, setValue] = useState<V>(defaultValue ?? (_model[_modelKey] as V) ?? ('' as V));
+    const model = (validator?.getModel() || {} as Record<K, V>);
+    const [value, setValue] = useState<V>(defaultValue ?? (model[modelKey] as V) ?? ('' as V));
     useMemo(() => {
-        if (defaultValue && !_model[_modelKey]) {
-            _model[_modelKey] = defaultValue;
-            _validator?.setPartialModel(_model);
+        if (defaultValue && !model[modelKey]) {
+            model[modelKey] = defaultValue;
+            validator?.setPartialModel(model);
             setValue(defaultValue);
         }
-    }, [])
+    }, [modelKey, defaultValue, validator, validations])
 
-    useListener(_validator?.listeners().createValidationBroadcastListener, async () => {
+    useListener(validator?.listeners().createValidationBroadcastListener, async () => {
         if (validations) {
-            return [_modelKey, await validations(_model[_modelKey] as V)];
+            return [modelKey, await validations(model[modelKey] as V)];
         }
-        return [_modelKey, true];
+        return [modelKey, true];
     });
 
-    const [disabled] = useSubscriberData(_validator?.getEvents().subscribers().createDisabledSubscriber);
-    const [focused] = useSubscriberData(_validator?.getEvents().subscribers().createFocusedSubscriber);
+    const [disabled] = useSubscriberData(validator?.getEvents().subscribers().createDisabledSubscriber);
+    const [focused] = useSubscriberData(validator?.getEvents().subscribers().createFocusedSubscriber);
 
     return [
         {
@@ -206,14 +253,14 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
             onChange: async (event: any) => {
                 const value = event.target.value as V;
                 setValue(value);
-                _model[_modelKey] = value;
-                _validator?.getProps(_modelKey).onChange(value);
+                model[modelKey] = value;
+                validator?.getProps(modelKey).onChange(value);
                 if (validations) {
                     await validations(value);
                 }
             }
         },
-        _validator
+        validator
     ]
 }
 
@@ -224,9 +271,12 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
  * @param callback 
  */
 export function useValidatorOnChanges<T>(validator?: ValidatorController<T>, callback?: (key: keyof T, value: unknown) => void) {
-    const _validator = useRef(validator).current;
-    useListener(_validator?.getEvents().listeners().createOnChangeListener, (key: keyof T, value: unknown) => {
-        callback?.(key, value)
+    const createOnChangeListener = useMemo(() => {
+        return validator?.getEvents().listeners().createOnChangeListener;
+    }, [validator]);
+
+    useListener(createOnChangeListener, (key, value) => {
+        callback?.(key, value);
     });
 }
 
@@ -235,9 +285,12 @@ export function useValidatorOnChanges<T>(validator?: ValidatorController<T>, cal
  * @param validator 
  * @param callback 
  */
-export function useValidatorJoinOnChange(validator?: ValidatorController<any>, callback?: (joinKey: string, key: PropertyKey, child: ValidatorController<any>, model: any) => void){
-    const _validator = useRef(validator).current;
-    useListener(_validator?.listeners().createJoinOnChangeListener, (joinKey, key, child, model)=>{
+export function useValidatorJoinOnChange(validator?: ValidatorController<any>, callback?: (joinKey: string, key: PropertyKey, child: ValidatorController<any>, model: any) => void) {
+    const createJoinOnChangeListener = useMemo(() => {
+        return validator?.listeners().createJoinOnChangeListener;
+    }, [validator]);
+
+    useListener(createJoinOnChangeListener, (joinKey, key, child, model) => {
         callback?.(joinKey, key, child, model);
     });
 }
@@ -250,8 +303,7 @@ export function useValidatorJoinOnChange(validator?: ValidatorController<any>, c
  * @returns 
  */
 export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
-    const _data = useRef(data).current;
-    const [array, setArray] = useState(_data);
+    const [array, setArray] = useState(data);
 
 
     return {

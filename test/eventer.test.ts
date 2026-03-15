@@ -184,6 +184,42 @@ describe('Eventer core functionality', () => {
       await new Promise((r) => setTimeout(r, 150));
       expect(doChange).toBe(true);    
     })
+
+    test('useValidatorOnChanges should listen to model changes', async () => {
+      const events = eventer();
+      const validator = events.createValidator<{ name: string; email: string }>('userForm');
+      validator.setModel({ name: 'John', email: 'john@example.com' });
+
+      const changes: { key: any; value: any }[] = [];
+      const listener = validator.getEvents().listeners().createOnChangeListener();
+      listener.on((key, value) => {
+        changes.push({ key, value });
+      });
+
+      // Simulate input change
+      validator.getProps('name').onChange('Jane');
+
+      // Wait for debounce in getProps
+      await new Promise(r => setTimeout(r, 150));
+
+      expect(changes.length).toBe(1);
+      expect(changes[0].key).toBe('name');
+      expect(changes[0].value).toBe('Jane');
+      expect(validator.getModel()?.name).toBe('Jane');
+
+      // Simulate another input change
+      validator.getProps('email').onChange('jane@example.com');
+
+      // Wait for debounce
+      await new Promise(r => setTimeout(r, 150));
+
+      expect(changes.length).toBe(2);
+      expect(changes[1].key).toBe('email');
+      expect(changes[1].value).toBe('jane@example.com');
+      expect(validator.getModel()?.email).toBe('jane@example.com');
+
+      listener.remove();
+    })
   });
 
   describe('timer controller', () => {

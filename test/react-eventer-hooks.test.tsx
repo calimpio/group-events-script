@@ -62,7 +62,7 @@ describe('React hooks (react-eventer)', () => {
     render(<Test />);
   })
 
-  test('joins to lsiten a joined changes model validator', async () => {
+  test('useValidatorJoinLeft joins to lsiten a joined changes model validator', async () => {
     let doChange = false;
     function Child({ ...props }) {
 

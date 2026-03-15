@@ -1,5 +1,6 @@
 
-**Versión: 3.4.1**
+**Versión: 3.5.0**
+
 
 -----
 
@@ -17,8 +18,7 @@ Eventer es una librería de gestión de eventos robusta y versátil para TypeScr
 4. [Ejemplo práctico](#ejemplo-práctico)
 5. [Instalación](#instalaci%C3%B3n)
 6. [Uso Básico](#uso-b%C3%A1sico)
-7. [Tipos de Controladores y Funcionalidades](#tipos-de-controladores-y-funcionalidades)
-   - [ListenerController](#listenercontroller)
+7   - [ListenerController](#listenercontroller)
    - [EventController](#eventcontroller)
    - [EventBroadcastController](#eventbroadcastcontroller)
    - [EventObservableController](#eventobservablecontroller)
@@ -48,6 +48,9 @@ Eventer es una librería de gestión de eventos robusta y versátil para TypeScr
    - [useValidatorJoinOnChange](#usevalidatorjoinonchange)
    - [useArray](#usearray)
 10. [Consideraciones de Desarrollo](#consideraciones-de-desarrollo)
+
+## Lo Nuevo en la Versión 3.5.x
+Esta versión se mejora los hooks de react con mucho mas potencial reactivo y simple para usar.
 
 ## Lo Nuevo en la Versión 3.4.x
 
@@ -92,25 +95,25 @@ Eventer es ideal para desacoplar la lógica de negocio de la interfaz de usuario
 ## Instalación
 
 ```bash
-npm i orquest-eventer@3.4.1
+npm i group-events-script@latest
 ```
 
 -----
 
 ## Uso Básico
 
-Para comenzar, importa la función `eventer` y crea una instancia de `GroupEvent`:
+Para comenzar, importa la función `eventer` y crea una instancia de `GroupEvent`, con `"group-events-script"`:
 
 ```typescript
-import { eventer } from "orquest-eventer";
+import { eventer } from "group-events-script";
 
 const appEvents = eventer("myApp"); // "myApp" es un prefijo opcional para los nombres de eventos, útil para depuración.
 ```
 
 ### Ejemplo práctico
 ```typescript
-import { eventer } from "orquest-eventer";
-import { useListener } from "orquest-eventer/react-eventer";
+import { eventer } from "group-events-script";
+import { useListener } from "group-events-script/react-eventer";
 import { useState } from "react";
 import Notification, { NotificationProps } from "./Notification";
 
@@ -441,8 +444,8 @@ Proporciona una estructura para la **validación de modelos de formularios**, in
 
 ```typescript
 import React, { useState, useEffect } from 'react';
-import { ValidatorController } from 'orquest-eventer';
-import { useListener, useObservable } from 'orquest-eventer/react-eventer';
+import { ValidatorController } from 'group-events-script';
+import { useListener, useObservable } from 'group-events-script/react-eventer';
 
 interface InputProps<T extends object> {
     /**
@@ -592,7 +595,7 @@ A continuación encontrarás ejemplos prácticos que muestran cómo utilizar dif
 
 ### Eventos simples con `EventController`
 ```typescript
-import { eventer } from "orquest-eventer";
+import { eventer } from "group-events-script";
 
 const app = eventer();
 const loginEvent = app.createEvent("login")<[userId: string]>();
@@ -684,8 +687,8 @@ Este hook permite a un componente de React **escuchar eventos** creados con `Eve
 ### Ejemplo de Uso
 
 ```typescript
-import { eventer } from "orquest-eventer";
-import { useListener } from "orquest-eventer/react-eventer";
+import { eventer } from "group-events-script";
+import { useListener } from "group-events-script/react-eventer";
 
 const appEvents = eventer();
 const userSavedEvent = appEvents.createEvent("userSaved")<[userId: string]>();
@@ -734,8 +737,8 @@ Retorna una tupla con tres elementos:
 
 ```typescript
 import { useEffect, useState } from "react";
-import { eventer } from "orquest-eventer";
-import { useObservable } from "orquest-eventer/react-eventer";
+import { eventer } from "group-events-script";
+import { useObservable } from "group-events-script/react-eventer";
 
 const appEvents = eventer();
 const userNameObservable = appEvents.createObservable("userName")("Invitado");
@@ -791,7 +794,7 @@ Retorna una tupla `[value, subscriber]`:
 ### Ejemplo de Uso
 
 ```typescript
-import { useSubscriberData } from "orquest-eventer/react-eventer";
+import { useSubscriberData } from "group-events-script/react-eventer";
 import { userNameObservable } from "./your-events-file";
 
 function UserProfileEditor() {
@@ -843,7 +846,7 @@ Este hook proporciona acceso a una instancia global de **`TaskManager`**, precon
 ### Ejemplo de Uso
 
 ```typescript
-import { useGlobalTaskManager } from "orquest-eventer/react-eventer";
+import { useGlobalTaskManager } from "group-events-script/react-eventer";
 
 function TaskProgressMonitor() {
     const globalTaskManager = useGlobalTaskManager();
@@ -882,7 +885,7 @@ Este hook permite **crear una tarea asíncrona** y añadirla a la instancia glob
 ### Ejemplo de Uso
 
 ```typescript
-import { useTask, useGlobalTaskManager } from "orquest-eventer/react-eventer";
+import { useTask, useGlobalTaskManager } from "group-events-script/react-eventer";
 
 function DataSyncComponent() {
     const globalTaskManager = useGlobalTaskManager();
@@ -928,7 +931,7 @@ Retorna una tupla `[validator, model]`:
 ### Ejemplo de Uso
 
 ```typescript
-import { useValidator } from "orquest-eventer/react-eventer";
+import { useValidator } from "group-events-script/react-eventer";
 import { useState, useEffect } from "react";
 
 function UserForm() {
@@ -1103,7 +1106,7 @@ Retorna una tupla `[inputProps, validator]`:
 ### Ejemplo de Uso
 
 ```typescript
-import { useValidatorInput } from "orquest-eventer/react-eventer";
+import { useValidatorInput } from "group-events-script/react-eventer";
 
 function UserForm() {
     const [validator] = useValidator<{ name: string, email: string }>({ name: '', email: '' });
@@ -1140,7 +1143,7 @@ No retorna valores. Este hook está diseñado para efectos secundarios.
 ### Ejemplo de Uso
 
 ```typescript
-import { useValidatorOnChanges } from "orquest-eventer/react-eventer";
+import { useValidatorOnChanges } from "group-events-script/react-eventer";
 
 function UserForm() {
     const [validator] = useValidator<{ name: string, email: string }>({ name: '', email: '' });
@@ -1178,7 +1181,7 @@ No retorna valores. Este hook está diseñado para efectos secundarios.
 ### Ejemplo de Uso
 
 ```typescript
-import { useValidatorJoinOnChange } from "orquest-eventer/react-eventer";
+import { useValidatorJoinOnChange } from "group-events-script/react-eventer";
 
 function ParentForm() {
     const [parentValidator] = useValidator<{ user: any }>({ user: {} });
