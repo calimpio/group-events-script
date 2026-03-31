@@ -263,6 +263,13 @@ export interface ValidatorController<Model, Name extends string = string> {
     join(key: string, validator: ValidatorController<any> | null): void    
 
     /**
+     * Invalidar un input, enviar error al input.
+     * @param key 
+     * @param error 
+     */
+    invalid(key: keyof Model, error: any): void
+
+    /**
      * Habilitar o deshabilitar el modo debug
      * @param value 
      */
@@ -321,6 +328,11 @@ export interface FormEventsController<Model, Description extends string = string
         * @param callback 
         */
         createOnChangeListener(): ListenerController<[key: keyof Model, value: any], void | Promise<void>, `On change props in ${Description}`>
+
+        /**
+         * Crea escuchador para cuando una propiedad sea invalida
+         */
+        createOnErrorListener(): ListenerController<[key: keyof Model, error: any], void | Promise<void>, `On error props in ${Description}`>
     }
     /**
      * Obtener si el formulario está deshabilitado
@@ -346,6 +358,7 @@ export interface FormEventsController<Model, Description extends string = string
     subscribers(): {
         createDisabledSubscriber(): SubscriberController<boolean>
         createFocusedSubscriber(): SubscriberController<boolean>
+        
     }
 }
 
@@ -1347,6 +1360,7 @@ export default class GroupEvent {
         const _join_onChange = this.createEvent("join-on-change." + name)<[joinKey: string, key: PropertyKey, child: ValidatorController<any>, model: any]>();        
         const _joins: Record<string, ListenerController<[], [PropertyKey, boolean] | Promise<[PropertyKey, boolean]>, string>> = {};
         const _validatorJoins: Record<string, ValidatorController<any>> = {};
+        const _onError = this.createEvent("onError." + name)<[key: keyof Model, error: any]>();
         const _setTaskManager = this.createEvent("setTaskManager." + name)<[taskManager: TaskManager | null]>();
         const _makeValidations = this.createBroadcast("dovalidation." + name)<[], [PropertyKey, boolean] | Promise<[PropertyKey, boolean]>>();
         const _onChange = this.createEvent("on-change." + name)<[key: keyof Model, value: any]>();
@@ -1373,18 +1387,18 @@ export default class GroupEvent {
             },
             getEvents() {
                 return {
-
                     getJoinOnChangeController() {
                         return _join_onChange;
                     },
-
                     getLookupChangeController() {
                         throw 'decrapitated method use createJoinOnChangeListener instead'
                     },
-
                     listeners: () => ({
                         createOnChangeListener() {
                             return _onChange.createListener();
+                        },
+                        createOnErrorListener() {
+                            return _onError.createListener();
                         },
                     }),
                     getDisabled() {
@@ -1408,7 +1422,9 @@ export default class GroupEvent {
                         createFocusedSubscriber() {
                             return _focused.createSubscriber();
                         },
-                    })
+
+                    }),
+
                 }
             },
             getProps(key, onChange) {
@@ -1430,6 +1446,9 @@ export default class GroupEvent {
                         }, 100);
                     },
                 }
+            },
+            invalid(key, error) {
+                _onError.emit(key, error);
             },
             getModel() {
                 return _model;

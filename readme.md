@@ -1,5 +1,5 @@
 
-**Versión: 3.5.0**
+**Versión: 3.5.1**
 
 
 -----
@@ -18,7 +18,8 @@ Eventer es una librería de gestión de eventos robusta y versátil para TypeScr
 4. [Ejemplo práctico](#ejemplo-práctico)
 5. [Instalación](#instalaci%C3%B3n)
 6. [Uso Básico](#uso-b%C3%A1sico)
-7   - [ListenerController](#listenercontroller)
+7. [Controladores de Eventos](#controladores-de-eventos)    
+   - [ListenerController](#listenercontroller)
    - [EventController](#eventcontroller)
    - [EventBroadcastController](#eventbroadcastcontroller)
    - [EventObservableController](#eventobservablecontroller)
@@ -47,10 +48,15 @@ Eventer es una librería de gestión de eventos robusta y versátil para TypeScr
    - [useValidatorOnChanges](#usevalidatoronchanges)
    - [useValidatorJoinOnChange](#usevalidatorjoinonchange)
    - [useArray](#usearray)
-10. [Consideraciones de Desarrollo](#consideraciones-de-desarrollo)
+10. [Pruebas Unitarias 🧪](#pruebas-unitarias-)
+11. [Consideraciones de Desarrollo](#consideraciones-de-desarrollo)
 
 ## Lo Nuevo en la Versión 3.5.x
-Esta versión se mejora los hooks de react con mucho mas potencial reactivo y simple para usar.
+*   **Nuevo Hook `useValidatorInput`**: Simplifica drásticamente la creación de inputs controlados con validación integrada, manejando automáticamente estados de error, `disabled` y `focused`.
+*   **Consolidación de `useSubscriberData`**: Se establece como el estándar para obtener datos reactivos de observables en la UI, eliminando la necesidad de hooks obsoletos.
+*   **Nuevos Hooks de Escucha**: `useValidatorOnChanges` y `useValidatorJoinOnChange` permiten reaccionar a cambios en modelos locales o de validadores anidados de forma declarativa.
+*   **Mejoras en `useArray`**: Se añaden métodos potentes como `move`, `updateAll` y `createByIndex` para una gestión de listas más flexible.
+*   **Refactorización de `ValidatorController`**: El sistema de `join` ahora es bidireccional, permitiendo que el padre valide a los hijos y que los hijos notifiquen cambios al padre de forma transparente.
 
 ## Lo Nuevo en la Versión 3.4.x
 
@@ -425,14 +431,11 @@ Proporciona una estructura para la **validación de modelos de formularios**, in
 
   * **`doValidation(): Promise<boolean>`**: Ejecuta las validaciones. Envía un evento broadcast y recopila los resultados.
 
-  * **`join(key: string, validator: ValidatorController<any> | null): void`**: Une un validador hijo a una clave específica del modelo actual. Permite validaciones anidadas donde el resultado del padre depende de los hijos.
-
-  * **`setDebug(value: boolean): void`**: Activa/desactiva el modo de depuración.
+  * **`join(key: string, validator: ValidatorController<any> | null): void`**: Realiza una unión con un validador hijo. Esto permite validaciones anidadas y sincronización de eventos de cambio.
   
-  * **`lookup(key: string, parent: ValidatorController<any> | null): void`**: Asocia este validador (como hijo) a un validador padre bajo una clave. Esto permite que el padre reciba notificaciones de cambio desde el hijo a través del listener `createlookupChangeListener`.
+  * **`invalid(key: keyof Model, error: any): void`**: Permite marcar manualmente un campo como inválido. Esto emite un evento de error que hooks como `useValidatorInput` capturan automáticamente para actualizar la UI, permitiendo mostrar errores externos (ej. validaciones del servidor).
 
-  * **`getParent(): ValidatorController<any> | null`**: Obtiene el validador padre que fue asignado mediante `lookup`.
-
+  * **`setDebug(value: boolean): void`**: Activa o desactiva los logs detallados en la consola para este validador.
   * **`setTaskManager(v: TaskManager | null): void` / `getTaskManager(): TaskManager | null`**: Para asociar un `TaskManager` al validador.
 
   * **`listeners()`**: Proporciona escuchadores para eventos del validador.
@@ -440,13 +443,15 @@ Proporciona una estructura para la **validación de modelos de formularios**, in
       * **`createSetTaskManagerListener()`**: Cuando se establece el `TaskManager`.
       * **`createValidationBroadcastListener()`**: Crea un escuchador que participa en el proceso de validación. Aquí es donde se debe implementar la lógica de validación para un campo específico.
       * **`createlookupChangeListener()`**: Crea un escuchador que se activa cuando una propiedad en un validador hijo (asociado mediante `lookup`) cambia. El escuchador recibe la `lookupKey`, la clave de la propiedad que cambió, la instancia del validador hijo y el modelo actualizado del hijo.
+      * **`createValidationBroadcastListener()`**: Escuchador que se activa cuando se llama a `doValidation()`. Debe devolver `[key, isValid]`.
+      * **`createJoinOnChangeListener()`**: Se activa cuando cualquier validador unido mediante `join` sufre un cambio en su modelo.
 #### Ejemplo de uso:
 
 ```typescript
 import React, { useState, useEffect } from 'react';
 import { ValidatorController } from 'group-events-script';
 import { useListener, useObservable } from 'group-events-script/react-eventer';
-
+import { useListener, useSubscriberData } from 'group-events-script/react-eventer';
 interface InputProps<T extends object> {
     /**
      * El modelo de datos (opcional si el validador ya lo tiene, 
@@ -505,8 +510,8 @@ export const Input = <T extends object>({
 
     // 2. Implementación de suscriptores de estado del formulario
     // Usamos useObservable para suscribirnos al estado 'disabled' del formulario.
-    // Si validator.getEvents().setDisabled(true) es llamado, este componente se actualizará.
-    const [isDisabled] = useObservable(
+    // Si validator.getEvents().setDisabled(true) es llamado, este componente se re-renderizará.
+    const [isDisabled] = useSubscriberData(
         validator.getEvents().subscribers().createDisabledSubscriber
     );
 
@@ -715,51 +720,6 @@ function UserStatusMessage() {
 -----
 
 ### useObservable (obsoleto)
-
-> **Obsoleto**: Se recomienda usar `useSubscriberData` para obtener el valor reactivo y `useSubscriber` para efectos secundarios.
-
-Este hook permite a un componente de React **suscribirse a un `EventObservableController` o a una función que cree un `SubscriberController`**, y obtener el valor actual del observable. El componente se **re-renderizará automáticamente** cada vez que el valor del observable cambie.
-
-### Parámetros
-
-  * **`observable`**: Una instancia de `EventObservableController<T>` o una función que, al ser llamada (`observable()`), retorna una instancia de `SubscriberController<T, string>`. Este es el observable al que el componente se suscribirá.
-  * **`callback2`** (opcional): Una función adicional que se ejecutará cada vez que el valor del observable cambie.
-
-### Valores de Retorno
-
-Retorna una tupla con tres elementos:
-
-1.  **`value`**: El valor actual del observable. Su tipo es inferido a partir del tipo `T` del observable.
-2.  **`subscriber`**: La instancia de `SubscriberController<T, string>` creada o utilizada por el hook.
-3.  **`state[0]`**: Un valor booleano interno del hook, que se actualiza para forzar la re-renderización del componente.
-
-### Ejemplo de Uso
-
-```typescript
-import { useEffect, useState } from "react";
-import { eventer } from "group-events-script";
-import { useObservable } from "group-events-script/react-eventer";
-
-const appEvents = eventer();
-const userNameObservable = appEvents.createObservable("userName")("Invitado");
-
-function UserNameDisplay() {
-    const [name, subscriber] = useObservable(userNameObservable);
-
-    const handleChangeName = () => {
-        subscriber?.next("Alice");
-    };
-
-    return (
-        <div>
-            <h2>Nombre de Usuario: {name}</h2>
-            <button onClick={handleChangeName}>Cambiar Nombre a Alice</button>
-        </div>
-    );
-}
-```
-
------
 
 ### useSubscriber
 
@@ -1057,9 +1017,9 @@ function UserForm() {
 Un hook para realizar joins directos entre validadores existentes en componentes React. Une un validador fuente a un validador objetivo con una clave específica, permitiendo validaciones modulares y anidadas. El join se elimina automáticamente cuando el componente se desmonta.
 
 ### Parámetros
-
+### Parámetros (Join parent-to-child)
   * **`source`**: El `ValidatorController` fuente (padre) al que se unirá el objetivo.
-  * **`target`**: El `ValidatorController` objetivo (hijo) que se unirá al fuente.
+  * **`source`**: El `ValidatorController` padre al que se unirá el objetivo.
   * **`key`**: La clave para el join.
 
 ### Valores de Retorno
@@ -1067,7 +1027,7 @@ Un hook para realizar joins directos entre validadores existentes en componentes
 Retorna una tupla `[target, source]`:
 
 1.  **`target`**: El validador objetivo (mismo que el parámetro).
-2.  **`source`**: El validador fuente (mismo que el parámetro).
+1.  **`target`**: El validador hijo unido (mismo que el parámetro).
 
 ### Ejemplo de Uso
 
@@ -1077,17 +1037,11 @@ function NestedForm({ parentValidator }) {
     
     // Une el childValidator al parentValidator con la clave 'child'
     const [target, source] = useValidatorJoinLeft(parentValidator, childValidator, 'child');
-    
-    // Ahora parentValidator incluye las validaciones de childValidator
-    return <input {...childValidator.getProps('field')} />;
-}
-```
-
 -----
 
 ### useValidatorInput
 
-Un hook especializado para validar una propiedad específica del modelo con un `ValidatorController`, aplicando validaciones personalizadas. Facilita la integración directa con inputs de formularios, manejando cambios y validaciones de manera reactiva.
+Este hook vincula una propiedad del modelo con un componente de entrada (`<input>`). Gestiona de forma reactiva el valor, el foco, el estado deshabilitado y los **errores**, capturando tanto las validaciones locales como las invalidaciones manuales disparadas vía `validator.invalid()`.
 
 ### Parámetros
 
@@ -1100,7 +1054,7 @@ Un hook especializado para validar una propiedad específica del modelo con un `
 
 Retorna una tupla `[inputProps, validator]`:
 
-1.  **`inputProps`**: Un objeto con propiedades para el input (como `value`, `onChange`), listo para spread en un elemento `<input>`.
+1.  **`inputProps`**: Objeto con `{ value, onChange, error, disabled, focused }` listo para ser inyectado vía spread. El campo `error` se actualiza automáticamente cuando falla una validación o se llama a `invalid()`.
 2.  **`validator`**: El `ValidatorController` usado (o `undefined` si no se proporcionó).
 
 ### Ejemplo de Uso
@@ -1110,8 +1064,10 @@ import { useValidatorInput } from "group-events-script/react-eventer";
 
 function UserForm() {
     const [validator] = useValidator<{ name: string, email: string }>({ name: '', email: '' });
+    const [validator] = useValidator<{ name: string, email: string }>();
     const [nameProps] = useValidatorInput('name', 'John', validator, (value) => value.length > 2);
     const [emailProps] = useValidatorInput('email', '', validator, async (value) => value.includes('@'));
+    const [emailProps] = useValidatorInput('email', 'dev@example.com', validator, async (value) => value.includes('@'));
 
     return (
         <form>
@@ -1130,6 +1086,7 @@ En este ejemplo, `useValidatorInput` vincula los inputs con validaciones especí
 ### useValidatorOnChanges
 
 Un hook para escuchar cambios en el modelo de un `ValidatorController`. Se ejecuta cada vez que una propiedad del modelo cambia, permitiendo reacciones reactivas a actualizaciones del formulario.
+Permite reaccionar a cualquier cambio en las propiedades del modelo de un validador de forma declarativa.
 
 ### Parámetros
 
@@ -1168,6 +1125,7 @@ En este ejemplo, cada vez que el nombre o email cambian en el modelo del validad
 ### useValidatorJoinOnChange
 
 Un hook para escuchar cambios en validadores anidados conectados mediante joins. Se ejecuta cuando un validador hijo (unido por join) cambia su modelo, permitiendo sincronización entre validadores padre e hijo.
+Permite al validador padre reaccionar a cambios que ocurren en cualquiera de sus validadores hijos conectados por `join`.
 
 ### Parámetros
 
@@ -1297,3 +1255,17 @@ El comando ejecuta todas las pruebas en `test/**/*.ts` y muestra un informe deta
 ---
 
 Puedes referirte a los casos de prueba como ejemplos prácticos de uso de cada API cuando estés desarrollando nuevas funcionalidades o integrando `eventer` en tu aplicación.
+
+### Invalidación Manual (Errores de Servidor)
+
+Puedes usar `validator.invalid()` para marcar campos como inválidos basándote en lógica externa al formulario, como una respuesta fallida de una API:
+
+```typescript
+const handleSave = async () => {
+    const result = await api.saveUser(validator.getModel());
+    if (result.errors?.email) {
+        // Esto actualizará automáticamente el hook useValidatorInput de 'email'
+        validator.invalid('email', 'Este correo ya está registrado en el sistema');
+    }
+};
+```

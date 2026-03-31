@@ -208,7 +208,8 @@ interface InputProps<V> {
     value: V,
     disabled?: boolean,
     focused?: boolean,
-    onChange: (event: any) => void
+    onChange: (event: { target: { value: V } }) => void
+    error: any
 }
 
 /**
@@ -227,6 +228,10 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
 
     const model = (validator?.getModel() || {} as Record<K, V>);
     const [value, setValue] = useState<V>(defaultValue ?? (model[modelKey] as V) ?? ('' as V));
+    const [error, seterror] = useState<any>();
+    const [errorValue, seterrorValue] = useState<V | undefined>();
+    const [lastError, setLastError] = useState<any>();
+
     useMemo(() => {
         if (defaultValue && !model[modelKey]) {
             model[modelKey] = defaultValue;
@@ -236,11 +241,20 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
     }, [modelKey, defaultValue, validator, validations])
 
     useListener(validator?.listeners().createValidationBroadcastListener, async () => {
+
         if (validations) {
-            return [modelKey, await validations(model[modelKey] as V)];
+            return [modelKey, await validations(model[modelKey] as V) || ((errorValue != value) && errorValue !== undefined)];
         }
         return [modelKey, true];
     });
+
+    useListener(validator?.getEvents().listeners().createOnErrorListener, (key, error) => {
+        if (key === modelKey) {
+            setLastError(error);
+            seterrorValue(value);
+            seterror(error);
+        }
+    })
 
     const [disabled] = useSubscriberData(validator?.getEvents().subscribers().createDisabledSubscriber);
     const [focused] = useSubscriberData(validator?.getEvents().subscribers().createFocusedSubscriber);
@@ -250,15 +264,21 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
             value,
             disabled,
             focused: focused || undefined,
-            onChange: async (event: any) => {
+            onChange: async (event) => {
                 const value = event.target.value as V;
+                if (errorValue == value) {
+                    seterror(lastError);
+                } else {
+                    seterror(undefined);
+                }
                 setValue(value);
                 model[modelKey] = value;
                 validator?.getProps(modelKey).onChange(value);
                 if (validations) {
                     await validations(value);
                 }
-            }
+            },
+            error
         },
         validator
     ]
