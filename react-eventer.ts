@@ -243,7 +243,7 @@ export function useValidatorInput<K extends PropertyKey, V>(modelKey: K, default
     useListener(validator?.listeners().createValidationBroadcastListener, async () => {
 
         if (validations) {
-            return [modelKey, await validations(model[modelKey] as V) || ((errorValue != value) && errorValue !== undefined)];
+            return [modelKey, await validations(model[modelKey] as V) || (((errorValue != value) || errorValue == undefined))];
         }
         return [modelKey, true];
     });
@@ -439,3 +439,45 @@ export function useArray<T, P>(data: Array<T>, create: (parent?: P) => T) {
     }
 }
 
+/**
+ * Cargador desde la vista
+ * @param loader 
+ * @param initLoad 
+ * @param props 
+ * @returns 
+ */
+export function useLoader<T, MODE extends boolean, PROPS extends any[]>(
+    loader: (...props: PROPS) => Promise<T>,
+    initLoad: MODE,
+    ...props: MODE extends true ? PROPS : []
+) {
+    const events = useRef(eventer()).current;
+    const _loader = useRef(events.createLoader("loader", loader)).current;
+    const [data, setData] = useState<T | null>(null);
+    const [loading, setLoading] = useState<boolean>(initLoad);
+    const [error, setError] = useState<Error | null>(null);
+
+    const execute = useCallback(async (...execProps: PROPS) => {
+        if (_loader.isLoading()) return;
+        setLoading(true);
+        try {
+            _loader.setTask(loader);
+            const result = await _loader.exec(...execProps);
+            if (result)
+                setData(result);
+        } catch (err) {
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [loader]);
+
+    useEffect(() => {
+        if (initLoad) {
+            (execute as any)(...props);
+        }
+    }, []);
+
+    return { data, loading, error, execute };
+}
